@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Moetly Pay — Réservez le prix, pas le siège",
-  description: "Bloquez le prix de votre billet d'avion aujourd'hui, payez plus tard. Zéro crédit.",
+  title: "Moetly Pay — Paiement différé pour marchands de billets d'avion",
+  description: "Augmentez vos ventes avec le paiement différé. Liens de paiement en 30 secondes, dashboard temps réel, API disponible. Commission simple de 5%.",
 };
 
 export default function RootLayout({
