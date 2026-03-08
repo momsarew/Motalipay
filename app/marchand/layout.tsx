@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
-import { Plane, BarChart3, ClipboardList, Link2, LogOut, User } from 'lucide-react';
+import { Plane, BarChart3, ClipboardList, Link2, LogOut, User, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 const navItems = [
   { href: '/marchand', icon: BarChart3, label: 'Vue d\'ensemble' },
+  { href: '/marchand/liens', icon: ExternalLink, label: 'Liens de paiement' },
   { href: '/marchand/reservations', icon: ClipboardList, label: 'Réservations' },
   { href: '/marchand/integration', icon: Link2, label: 'Intégration' },
 ];

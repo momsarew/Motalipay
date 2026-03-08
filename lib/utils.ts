@@ -34,6 +34,15 @@ export function daysRemaining(expirationDate: string): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
+export function resteAPayer(prix_bloque: number, total_paye: number): number {
+  return Math.round(Math.max(0, prix_bloque - total_paye) * 100) / 100;
+}
+
+export function progressionPaiement(total_paye: number, prix_bloque: number): number {
+  if (prix_bloque <= 0) return 0;
+  return Math.min(100, Math.max(0, (total_paye / prix_bloque) * 100));
+}
+
 export function calculatePrime(prix: number, rate: number = 0.05): {
   montant_prime: number;
   part_moetly: number;

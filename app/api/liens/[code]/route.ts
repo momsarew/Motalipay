@@ -3,34 +3,41 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ code: string }> }
 ) {
-  const { id } = await params;
+  const { code } = await params;
   const supabase = createServiceClient();
 
+  // Récupérer le lien
   const { data, error } = await supabase
-    .from('reservations')
-    .select('*, vol:vols(*), lien_paiement:liens_paiement(*), paiements(*)')
-    .eq('id', id)
+    .from('liens_paiement')
+    .select('*')
+    .eq('short_code', code)
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+  if (error || !data) {
+    return NextResponse.json({ error: 'Lien non trouvé' }, { status: 404 });
   }
+
+  // Incrémenter le compteur de vues
+  await supabase
+    .from('liens_paiement')
+    .update({ nb_vues: (data.nb_vues || 0) + 1 })
+    .eq('id', data.id);
 
   return NextResponse.json(data);
 }
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ code: string }> }
 ) {
-  const { id } = await params;
+  const { code } = await params;
   const body = await req.json();
   const supabase = createServiceClient();
 
-  const allowedFields = ['statut'];
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const allowedFields = ['actif'];
+  const updates: Record<string, unknown> = {};
 
   for (const field of allowedFields) {
     if (field in body) {
@@ -39,10 +46,10 @@ export async function PATCH(
   }
 
   const { data, error } = await supabase
-    .from('reservations')
+    .from('liens_paiement')
     .update(updates)
-    .eq('id', id)
-    .select('*, vol:vols(*), lien_paiement:liens_paiement(*), paiements(*)')
+    .eq('short_code', code)
+    .select()
     .single();
 
   if (error) {

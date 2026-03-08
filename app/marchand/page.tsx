@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Reservation, DashboardKPIs } from '@/types';
-import { formatCurrency, formatDateShort, shortId, daysRemaining } from '@/lib/utils';
+import { Reservation, Paiement } from '@/types';
+import { formatCurrency, formatDateShort, shortId, daysRemaining, resteAPayer, progressionPaiement } from '@/lib/utils';
 import Card from '@/components/ui/Card';
 import Badge, { statutToVariant, statutLabel } from '@/components/ui/Badge';
-import { TrendingUp, Shield, DollarSign, Target, Clock } from 'lucide-react';
+import ProgressBar from '@/components/ui/ProgressBar';
+import { TrendingUp, Shield, DollarSign, Target, Clock, CreditCard, CheckCircle, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MarchandDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [loading, setLoading] = useState(true);
   const [marchandId, setMarchandId] = useState<string | null>(null);
 
@@ -36,34 +36,11 @@ export default function MarchandDashboardPage() {
 
       setMarchandId(marchand.id);
 
-      // Get reservations
-      const res = await fetch(`/api/reservations?marchand_id=${marchand.id}`);
+      // Get reservations with paiements
+      const res = await fetch(`/api/reservations?marchand_id=${marchand.id}&limit=100`);
       const resData = await res.json();
       const allRes: Reservation[] = resData.data || [];
       setReservations(allRes);
-
-      // Calculate KPIs
-      const active = allRes.filter(r => r.statut === 'active');
-      const finalisees = allRes.filter(r => r.statut === 'finalisee');
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const primesThisMonth = allRes
-        .filter(r => new Date(r.created_at) >= monthStart)
-        .reduce((sum, r) => sum + r.part_marchand, 0);
-
-      const avgDays = active.length > 0
-        ? active.reduce((sum, r) => sum + daysRemaining(r.date_expiration), 0) / active.length
-        : 0;
-
-      setKpis({
-        reservations_actives: active.length,
-        volume_garanti_total: active.reduce((sum, r) => sum + r.prix_bloque, 0),
-        primes_collectees_mois: primesThisMonth,
-        taux_finalisation: allRes.length > 0 ? (finalisees.length / allRes.length) * 100 : 0,
-        jours_visibilite_moyenne: Math.round(avgDays),
-      });
-
       setLoading(false);
     };
 
@@ -83,10 +60,47 @@ export default function MarchandDashboardPage() {
     );
   }
 
+  // KPI calculations
+  const actives = reservations.filter(r => r.statut === 'active');
+  const finalisees = reservations.filter(r => r.statut === 'finalisee');
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Volume garanti = somme des prix_bloque des actives
+  const volumeGaranti = actives.reduce((sum, r) => sum + r.prix_bloque, 0);
+
+  // Pipeline restant = somme des restes à payer des actives
+  const pipelineRestant = actives.reduce((sum, r) => sum + resteAPayer(r.prix_bloque, r.total_paye || 0), 0);
+
+  // Total collecté ce mois (tous paiements confirmés)
+  const allPaiements = reservations.flatMap(r => r.paiements || []);
+  const paiementsThisMonth = allPaiements
+    .filter(p => p.statut === 'confirme' && new Date(p.created_at) >= monthStart);
+  const collectesMois = paiementsThisMonth.reduce((sum, p) => sum + p.montant, 0);
+
+  // Taux de finalisation
+  const tauxFinalisation = reservations.length > 0
+    ? (finalisees.length / reservations.length) * 100
+    : 0;
+
+  // Progression moyenne des actives
+  const progressionMoyenne = actives.length > 0
+    ? actives.reduce((sum, r) => sum + progressionPaiement(r.total_paye || 0, r.prix_bloque), 0) / actives.length
+    : 0;
+
+  // Derniers paiements reçus (top 5)
+  const recentPaiements = allPaiements
+    .filter(p => p.statut === 'confirme')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  // Map paiement → reservation pour le contexte
+  const reservationMap = new Map(reservations.map(r => [r.id, r]));
+
   const kpiCards = [
     {
       label: 'Réservations actives',
-      value: kpis?.reservations_actives || 0,
+      value: actives.length,
       format: 'number' as const,
       icon: Shield,
       color: 'text-blue-primary',
@@ -94,15 +108,15 @@ export default function MarchandDashboardPage() {
     },
     {
       label: 'Volume garanti',
-      value: kpis?.volume_garanti_total || 0,
+      value: volumeGaranti,
       format: 'currency' as const,
       icon: TrendingUp,
       color: 'text-success',
       bgColor: 'bg-emerald-50',
     },
     {
-      label: 'Primes perçues ce mois',
-      value: kpis?.primes_collectees_mois || 0,
+      label: 'Collecté ce mois',
+      value: collectesMois,
       format: 'currency' as const,
       icon: DollarSign,
       color: 'text-yellow-dark',
@@ -110,7 +124,7 @@ export default function MarchandDashboardPage() {
     },
     {
       label: 'Taux de finalisation',
-      value: kpis?.taux_finalisation || 0,
+      value: tauxFinalisation,
       format: 'percent' as const,
       icon: Target,
       color: 'text-blue-dark',
@@ -118,15 +132,14 @@ export default function MarchandDashboardPage() {
     },
   ];
 
-  // Weekly chart data (simplified)
+  // Weekly chart data
   const weeklyData = Array.from({ length: 8 }, (_, i) => {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() + (i * 7));
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
-    const volume = reservations
-      .filter(r => r.statut === 'active')
+    const volume = actives
       .filter(r => {
         const exp = new Date(r.date_expiration);
         return exp >= weekStart && exp < weekEnd;
@@ -173,41 +186,186 @@ export default function MarchandDashboardPage() {
         ))}
       </div>
 
-      {/* Chart */}
-      <Card padding="lg" className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
-              Vos ventes garanties par semaine
-            </h2>
-            <p className="text-sm text-gray-500">
-              Basé sur vos {reservations.filter(r => r.statut === 'active').length} réservations actives
-            </p>
-          </div>
-          <Clock className="w-5 h-5 text-gray-400" />
-        </div>
-        <div className="flex items-end gap-3 h-48">
-          {weeklyData.map((d) => (
-            <div key={d.week} className="flex-1 flex flex-col items-center gap-2">
-              <span className="text-xs text-gray-500 font-medium">
-                {d.volume > 0 ? formatCurrency(d.volume) : ''}
-              </span>
-              <div
-                className="w-full rounded-t-lg transition-all duration-500"
-                style={{
-                  height: `${Math.max((d.volume / maxVolume) * 100, 4)}%`,
-                  background: d.volume > 0
-                    ? 'linear-gradient(180deg, var(--blue-primary), var(--blue-dark))'
-                    : 'var(--gray-200)',
-                }}
-              />
-              <span className="text-xs text-gray-500">{d.week}</span>
+      {/* Pipeline + Progression */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Pipeline restant */}
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
+                Pipeline restant
+              </h2>
+              <p className="text-sm text-gray-500">
+                Volume en attente de paiement
+              </p>
             </div>
-          ))}
-        </div>
-      </Card>
+            <div className="text-right">
+              <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-primary">
+                {formatCurrency(pipelineRestant)}
+              </p>
+            </div>
+          </div>
+          <ProgressBar
+            current={volumeGaranti - pipelineRestant}
+            total={volumeGaranti || 1}
+          />
+          <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-success" />
+              {formatCurrency(volumeGaranti - pipelineRestant)} collecté
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-yellow-accent" />
+              {formatCurrency(pipelineRestant)} en attente
+            </span>
+          </div>
+        </Card>
 
-      {/* Recent reservations */}
+        {/* Progression moyenne */}
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
+                Progression moyenne
+              </h2>
+              <p className="text-sm text-gray-500">
+                Avancement paiement des réservations actives
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-primary">
+                {Math.round(progressionMoyenne)}%
+              </p>
+            </div>
+          </div>
+          {/* Mini barres par réservation active */}
+          <div className="space-y-2 max-h-36 overflow-y-auto">
+            {actives.slice(0, 6).map(res => {
+              const vol = res.vol;
+              const lien = res.lien_paiement;
+              const trajet = vol
+                ? `${vol.ville_origine} → ${vol.ville_destination}`
+                : lien
+                  ? `${lien.ville_origine} → ${lien.ville_destination}`
+                  : shortId(res.id);
+              const pct = progressionPaiement(res.total_paye || 0, res.prix_bloque);
+
+              return (
+                <div key={res.id} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 w-28 truncate" title={trajet}>{trajet}</span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        background: pct >= 100
+                          ? 'var(--success)'
+                          : 'linear-gradient(90deg, var(--blue-primary), var(--yellow-accent))',
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-gray-600 w-10 text-right">{Math.round(pct)}%</span>
+                </div>
+              );
+            })}
+            {actives.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">Aucune réservation active</p>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Activité récente + Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Activité récente (derniers paiements) */}
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
+              Derniers paiements reçus
+            </h2>
+            <CreditCard className="w-5 h-5 text-gray-400" />
+          </div>
+          {recentPaiements.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">Aucun paiement reçu</p>
+          ) : (
+            <div className="space-y-0">
+              {recentPaiements.map(p => {
+                const res = reservationMap.get(p.reservation_id);
+                const vol = res?.vol;
+                const lien = res?.lien_paiement;
+                const trajet = vol
+                  ? `${vol.ville_origine} → ${vol.ville_destination}`
+                  : lien
+                    ? `${lien.ville_origine} → ${lien.ville_destination}`
+                    : 'Réservation';
+
+                const typeLabel: Record<string, string> = {
+                  prime: 'Prime',
+                  partiel: 'Versement',
+                  solde: 'Solde final',
+                };
+
+                return (
+                  <div key={p.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-success/10 rounded-lg flex items-center justify-center">
+                        <ArrowUpRight className="w-4 h-4 text-success" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {typeLabel[p.type] || p.type} — {trajet}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {res?.consommateur_prenom} · {formatDateShort(p.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-success">
+                      +{formatCurrency(p.montant)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        {/* Chart ventes garanties */}
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
+                Ventes garanties par semaine
+              </h2>
+              <p className="text-sm text-gray-500">
+                Basé sur {actives.length} réservation{actives.length > 1 ? 's' : ''} active{actives.length > 1 ? 's' : ''}
+              </p>
+            </div>
+            <Clock className="w-5 h-5 text-gray-400" />
+          </div>
+          <div className="flex items-end gap-3 h-48">
+            {weeklyData.map((d) => (
+              <div key={d.week} className="flex-1 flex flex-col items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium">
+                  {d.volume > 0 ? formatCurrency(d.volume) : ''}
+                </span>
+                <div
+                  className="w-full rounded-t-lg transition-all duration-500"
+                  style={{
+                    height: `${Math.max((d.volume / maxVolume) * 100, 4)}%`,
+                    background: d.volume > 0
+                      ? 'linear-gradient(180deg, var(--blue-primary), var(--blue-dark))'
+                      : 'var(--gray-200)',
+                  }}
+                />
+                <span className="text-xs text-gray-500">{d.week}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent reservations table */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
@@ -226,26 +384,52 @@ export default function MarchandDashboardPage() {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 text-gray-500 font-medium">ID</th>
-                  <th className="text-left py-3 text-gray-500 font-medium">Destination</th>
+                  <th className="text-left py-3 text-gray-500 font-medium">Trajet</th>
                   <th className="text-left py-3 text-gray-500 font-medium">Montant</th>
+                  <th className="text-left py-3 text-gray-500 font-medium">Progression</th>
                   <th className="text-left py-3 text-gray-500 font-medium">Statut</th>
                   <th className="text-left py-3 text-gray-500 font-medium">Expiration</th>
                 </tr>
               </thead>
               <tbody>
-                {recentReservations.map(res => (
-                  <tr key={res.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 font-mono text-gray-400 text-xs">{shortId(res.id)}</td>
-                    <td className="py-3 font-medium">
-                      {res.vol ? `${res.vol.origine} → ${res.vol.destination}` : '-'}
-                    </td>
-                    <td className="py-3">{formatCurrency(res.prix_bloque)}</td>
-                    <td className="py-3">
-                      <Badge variant={statutToVariant(res.statut)}>{statutLabel(res.statut)}</Badge>
-                    </td>
-                    <td className="py-3 text-gray-500">{formatDateShort(res.date_expiration)}</td>
-                  </tr>
-                ))}
+                {recentReservations.map(res => {
+                  const vol = res.vol;
+                  const lien = res.lien_paiement;
+                  const trajet = vol
+                    ? `${vol.ville_origine} → ${vol.ville_destination}`
+                    : lien
+                      ? `${lien.ville_origine} → ${lien.ville_destination}`
+                      : '-';
+                  const pct = progressionPaiement(res.total_paye || 0, res.prix_bloque);
+
+                  return (
+                    <tr key={res.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 font-mono text-gray-400 text-xs">{shortId(res.id)}</td>
+                      <td className="py-3 font-medium">{trajet}</td>
+                      <td className="py-3">{formatCurrency(res.prix_bloque)}</td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                background: pct >= 100
+                                  ? 'var(--success)'
+                                  : 'linear-gradient(90deg, var(--blue-primary), var(--yellow-accent))',
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500">{Math.round(pct)}%</span>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        <Badge variant={statutToVariant(res.statut)}>{statutLabel(res.statut)}</Badge>
+                      </td>
+                      <td className="py-3 text-gray-500">{formatDateShort(res.date_expiration)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

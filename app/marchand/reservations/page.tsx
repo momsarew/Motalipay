@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Reservation } from '@/types';
-import { formatCurrency, formatDateShort, shortId, daysRemaining } from '@/lib/utils';
+import { formatCurrency, formatDateShort, shortId, daysRemaining, progressionPaiement } from '@/lib/utils';
 import Card from '@/components/ui/Card';
 import Badge, { statutToVariant, statutLabel } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
@@ -87,16 +87,29 @@ export default function ReservationsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Destination', 'Prix bloqué', 'Prime perçue', 'Statut', 'Date expiration', 'Email'];
-    const rows = reservations.map(r => [
-      shortId(r.id),
-      r.vol ? `${r.vol.origine}-${r.vol.destination}` : '-',
-      r.prix_bloque.toFixed(2),
-      r.part_marchand.toFixed(2),
-      r.statut,
-      formatDateShort(r.date_expiration),
-      r.consommateur_email,
-    ]);
+    const headers = ['ID', 'Trajet', 'Prix bloqué', 'Total payé', 'Progression', 'Prime perçue', 'Statut', 'Date expiration', 'Email'];
+    const rows = reservations.map(r => {
+      const vol = r.vol;
+      const lien = r.lien_paiement;
+      const trajet = vol
+        ? `${vol.ville_origine}-${vol.ville_destination}`
+        : lien
+          ? `${lien.ville_origine}-${lien.ville_destination}`
+          : '-';
+      const pct = progressionPaiement(r.total_paye || 0, r.prix_bloque);
+
+      return [
+        shortId(r.id),
+        trajet,
+        r.prix_bloque.toFixed(2),
+        (r.total_paye || 0).toFixed(2),
+        `${Math.round(pct)}%`,
+        r.part_marchand.toFixed(2),
+        r.statut,
+        formatDateShort(r.date_expiration),
+        r.consommateur_email,
+      ];
+    });
 
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -165,9 +178,10 @@ export default function ReservationsPage() {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-4 text-gray-500 font-medium">ID</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Destination</th>
+                  <th className="text-left p-4 text-gray-500 font-medium">Trajet</th>
                   <th className="text-left p-4 text-gray-500 font-medium">Client</th>
                   <th className="text-right p-4 text-gray-500 font-medium">Montant</th>
+                  <th className="text-left p-4 text-gray-500 font-medium">Progression</th>
                   <th className="text-right p-4 text-gray-500 font-medium">Prime perçue</th>
                   <th className="text-left p-4 text-gray-500 font-medium">Statut</th>
                   <th className="text-left p-4 text-gray-500 font-medium">Expiration</th>
@@ -175,45 +189,70 @@ export default function ReservationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(res => (
-                  <tr key={res.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-mono text-gray-400 text-xs">{shortId(res.id)}</td>
-                    <td className="p-4 font-medium">
-                      {res.vol ? `${res.vol.origine} → ${res.vol.destination}` : '-'}
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <p className="font-medium">{res.consommateur_prenom}</p>
-                        <p className="text-xs text-gray-400">{res.consommateur_email}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right font-medium">{formatCurrency(res.prix_bloque)}</td>
-                    <td className="p-4 text-right font-medium text-success">
-                      {formatCurrency(res.part_marchand)}
-                    </td>
-                    <td className="p-4">
-                      <Badge variant={statutToVariant(res.statut)}>{statutLabel(res.statut)}</Badge>
-                    </td>
-                    <td className="p-4 text-gray-500">
-                      <div>
-                        <p>{formatDateShort(res.date_expiration)}</p>
+                {filtered.map(res => {
+                  const vol = res.vol;
+                  const lien = res.lien_paiement;
+                  const trajet = vol
+                    ? `${vol.ville_origine} → ${vol.ville_destination}`
+                    : lien
+                      ? `${lien.ville_origine} → ${lien.ville_destination}`
+                      : '-';
+                  const pct = progressionPaiement(res.total_paye || 0, res.prix_bloque);
+
+                  return (
+                    <tr key={res.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="p-4 font-mono text-gray-400 text-xs">{shortId(res.id)}</td>
+                      <td className="p-4 font-medium">{trajet}</td>
+                      <td className="p-4">
+                        <div>
+                          <p className="font-medium">{res.consommateur_prenom}</p>
+                          <p className="text-xs text-gray-400">{res.consommateur_email}</p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right font-medium">{formatCurrency(res.prix_bloque)}</td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${pct}%`,
+                                background: pct >= 100
+                                  ? 'var(--success)'
+                                  : 'linear-gradient(90deg, var(--blue-primary), var(--yellow-accent))',
+                              }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 w-10">{Math.round(pct)}%</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right font-medium text-success">
+                        {formatCurrency(res.part_marchand)}
+                      </td>
+                      <td className="p-4">
+                        <Badge variant={statutToVariant(res.statut)}>{statutLabel(res.statut)}</Badge>
+                      </td>
+                      <td className="p-4 text-gray-500">
+                        <div>
+                          <p>{formatDateShort(res.date_expiration)}</p>
+                          {res.statut === 'active' && (
+                            <p className="text-xs text-blue-primary">{daysRemaining(res.date_expiration)}j restants</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
                         {res.statut === 'active' && (
-                          <p className="text-xs text-blue-primary">{daysRemaining(res.date_expiration)}j restants</p>
+                          <button
+                            onClick={() => handleMarkFinalized(res.id)}
+                            className="text-xs bg-success/10 text-success px-3 py-1.5 rounded-lg hover:bg-success/20 transition-colors cursor-pointer"
+                          >
+                            Finaliser
+                          </button>
                         )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      {res.statut === 'active' && (
-                        <button
-                          onClick={() => handleMarkFinalized(res.id)}
-                          className="text-xs bg-success/10 text-success px-3 py-1.5 rounded-lg hover:bg-success/20 transition-colors cursor-pointer"
-                        >
-                          Finaliser
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

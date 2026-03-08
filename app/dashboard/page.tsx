@@ -1,22 +1,204 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Reservation } from '@/types';
-import { formatCurrency, formatDate, shortId } from '@/lib/utils';
+import { Reservation, Paiement } from '@/types';
+import { formatCurrency, formatDate, formatDateShort, shortId, resteAPayer } from '@/lib/utils';
 import Badge, { statutToVariant, statutLabel } from '@/components/ui/Badge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import CountdownTimer from '@/components/ui/CountdownTimer';
-import { Plane, ArrowLeft } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import PaymentModal from '@/components/consumer/PaymentModal';
+import { Plane, ArrowLeft, CreditCard, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+
+function PaiementHistoryItem({ paiement }: { paiement: Paiement }) {
+  const typeLabels: Record<string, string> = {
+    prime: 'Prime initiale',
+    partiel: 'Versement partiel',
+    solde: 'Solde final',
+  };
+  const statutIcons: Record<string, React.ReactNode> = {
+    confirme: <CheckCircle className="w-4 h-4 text-success" />,
+    en_attente: <Clock className="w-4 h-4 text-yellow-accent" />,
+    echoue: <XCircle className="w-4 h-4 text-error" />,
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
+      <div className="flex items-center gap-3">
+        {statutIcons[paiement.statut] || <Clock className="w-4 h-4 text-gray-400" />}
+        <div>
+          <p className="text-sm font-medium text-gray-800">
+            {typeLabels[paiement.type] || paiement.type}
+          </p>
+          <p className="text-xs text-gray-400">
+            {formatDateShort(paiement.created_at)}
+          </p>
+        </div>
+      </div>
+      <span className={`text-sm font-semibold ${
+        paiement.statut === 'confirme' ? 'text-success' :
+        paiement.statut === 'echoue' ? 'text-error' :
+        'text-gray-600'
+      }`}>
+        {paiement.statut === 'confirme' ? '+' : ''}{formatCurrency(paiement.montant)}
+      </span>
+    </div>
+  );
+}
+
+function ReservationCard({
+  res,
+  onPay,
+}: {
+  res: Reservation;
+  onPay: (reservation: Reservation) => void;
+}) {
+  const [showHistory, setShowHistory] = useState(false);
+
+  const vol = res.vol;
+  const lien = res.lien_paiement;
+  const trajetLabel = vol
+    ? `${vol.ville_origine} → ${vol.ville_destination}`
+    : lien
+      ? `${lien.ville_origine} → ${lien.ville_destination}`
+      : 'Réservation';
+  const volDate = vol?.date_vol || lien?.date_vol;
+  const compagnie = vol?.compagnie || lien?.compagnie;
+
+  const totalPaye = res.total_paye || 0;
+  const reste = resteAPayer(res.prix_bloque, totalPaye);
+  const estFinalisee = res.statut === 'finalisee' || reste <= 0;
+  const paiementsConfirmes = (res.paiements || []).filter(p => p.statut === 'confirme');
+  const allPaiements = res.paiements || [];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      {/* En-tête */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-sm text-gray-400 font-mono">{shortId(res.id)}</span>
+            <Badge variant={statutToVariant(res.statut)}>
+              {statutLabel(res.statut)}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
+              {trajetLabel}
+            </span>
+          </div>
+          {(volDate || compagnie) && (
+            <p className="text-sm text-gray-500 mt-1">
+              {volDate && <>Vol le {formatDate(volDate)}</>}
+              {volDate && compagnie && <> &middot; </>}
+              {compagnie}
+            </p>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
+            {formatCurrency(res.prix_bloque)}
+          </p>
+          <p className="text-sm text-gray-500">Prix bloqué</p>
+        </div>
+      </div>
+
+      {/* Barre de progression */}
+      <div className="mt-4">
+        <ProgressBar current={totalPaye} total={res.prix_bloque} />
+      </div>
+
+      {/* Réservation active — Actions de paiement */}
+      {res.statut === 'active' && !estFinalisee && (
+        <div className="mt-4 bg-blue-light/50 border border-blue-primary/15 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <CountdownTimer targetDate={res.date_expiration} compact />
+            <span className="text-sm font-semibold text-gray-700">
+              Reste : {formatCurrency(reste)}
+            </span>
+          </div>
+          <Button
+            variant="accent"
+            size="lg"
+            className="w-full"
+            onClick={() => onPay(res)}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Payer maintenant
+            </span>
+          </Button>
+          <div className="flex gap-2 mt-3">
+            <a
+              href={`mailto:?subject=${encodeURIComponent(`Finalisation réservation ${shortId(res.id)}`)}&body=${encodeURIComponent(`Bonjour,\n\nJe souhaite finaliser ma réservation ${shortId(res.id)} pour le trajet ${trajetLabel}.\n\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nDéjà payé : ${formatCurrency(totalPaye)}\nReste à payer : ${formatCurrency(reste)}\n\nMerci.`)}`}
+              className="flex-1 text-center text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Contacter par email
+            </a>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Bonjour, je souhaite finaliser ma réservation ${shortId(res.id)} pour ${trajetLabel}.\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nReste à payer : ${formatCurrency(reste)}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center text-xs bg-[#25D366]/10 text-[#25D366] px-3 py-2 rounded-lg hover:bg-[#25D366]/20 transition-colors font-medium"
+            >
+              Contacter par WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Réservation finalisée */}
+      {estFinalisee && res.statut === 'finalisee' && (
+        <div className="mt-4 bg-success/5 border border-success/20 rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <CheckCircle className="w-5 h-5 text-success" />
+            <span className="text-success font-[family-name:var(--font-sora)] font-bold">
+              Paiement complet
+            </span>
+          </div>
+          <p className="text-sm text-gray-500">
+            Votre billet est entièrement payé. Contactez votre vendeur pour la remise.
+          </p>
+        </div>
+      )}
+
+      {/* Historique des paiements */}
+      {allPaiements.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 text-sm text-blue-primary font-medium hover:text-blue-dark transition-colors cursor-pointer"
+          >
+            {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {paiementsConfirmes.length} paiement{paiementsConfirmes.length > 1 ? 's' : ''} effectué{paiementsConfirmes.length > 1 ? 's' : ''}
+          </button>
+
+          {showHistory && (
+            <div className="mt-2 bg-gray-50 rounded-xl p-3">
+              {allPaiements
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .map(p => (
+                  <PaiementHistoryItem key={p.id} paiement={p} />
+                ))
+              }
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payingReservation, setPayingReservation] = useState<Reservation | null>(null);
 
-  useEffect(() => {
+  const fetchReservations = useCallback(() => {
     if (!email) {
       setLoading(false);
       return;
@@ -31,6 +213,17 @@ function DashboardContent() {
       .catch(() => setLoading(false));
   }, [email]);
 
+  useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations]);
+
+  const handlePaymentComplete = () => {
+    setPayingReservation(null);
+    // Recharger les données pour refléter le nouveau paiement
+    setLoading(true);
+    fetchReservations();
+  };
+
   if (!email) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
@@ -39,6 +232,12 @@ function DashboardContent() {
       </div>
     );
   }
+
+  // KPIs rapides
+  const actives = reservations.filter(r => r.statut === 'active');
+  const finalisees = reservations.filter(r => r.statut === 'finalisee');
+  const totalPaye = reservations.reduce((sum, r) => sum + (r.total_paye || 0), 0);
+  const totalBloque = reservations.reduce((sum, r) => sum + r.prix_bloque, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -67,6 +266,28 @@ function DashboardContent() {
           Mes réservations
         </h1>
 
+        {/* Mini KPIs */}
+        {!loading && reservations.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+              <p className="text-2xl font-bold text-blue-primary">{reservations.length}</p>
+              <p className="text-xs text-gray-500">Réservation{reservations.length > 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+              <p className="text-2xl font-bold text-yellow-accent">{actives.length}</p>
+              <p className="text-xs text-gray-500">Active{actives.length > 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+              <p className="text-2xl font-bold text-success">{finalisees.length}</p>
+              <p className="text-xs text-gray-500">Finalisée{finalisees.length > 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+              <p className="text-lg font-bold text-gray-900">{formatCurrency(totalPaye)}</p>
+              <p className="text-xs text-gray-500">sur {formatCurrency(totalBloque)}</p>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-4">
             {[1, 2].map(i => (
@@ -81,54 +302,24 @@ function DashboardContent() {
         ) : (
           <div className="space-y-4">
             {reservations.map(res => (
-              <div key={res.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm text-gray-400 font-mono">{shortId(res.id)}</span>
-                      <Badge variant={statutToVariant(res.statut)}>
-                        {statutLabel(res.statut)}
-                      </Badge>
-                    </div>
-                    {res.vol && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
-                          {res.vol.ville_origine} &rarr; {res.vol.ville_destination}
-                        </span>
-                      </div>
-                    )}
-                    {res.vol && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Vol le {formatDate(res.vol.date_vol)} &middot; {res.vol.compagnie}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
-                      {formatCurrency(res.prix_bloque)}
-                    </p>
-                    <p className="text-sm text-gray-500">Prix bloqué</p>
-                  </div>
-                </div>
-
-                {res.statut === 'active' && (
-                  <>
-                    <div className="mt-4">
-                      <ProgressBar current={res.montant_prime} total={res.prix_bloque} />
-                    </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <CountdownTimer targetDate={res.date_expiration} compact />
-                      <button className="text-sm bg-yellow-accent text-gray-900 px-4 py-2 rounded-xl font-semibold hover:bg-yellow-dark transition-colors cursor-pointer">
-                        Finaliser le paiement
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              <ReservationCard
+                key={res.id}
+                res={res}
+                onPay={setPayingReservation}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de paiement */}
+      {payingReservation && (
+        <PaymentModal
+          reservation={payingReservation}
+          onPaymentComplete={handlePaymentComplete}
+          onClose={() => setPayingReservation(null)}
+        />
+      )}
     </div>
   );
 }

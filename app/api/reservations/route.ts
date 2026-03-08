@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('reservations')
-    .select('*, vol:vols(*)', { count: 'exact' })
+    .select('*, vol:vols(*), lien_paiement:liens_paiement(*), paiements(*)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
 

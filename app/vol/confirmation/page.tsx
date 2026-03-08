@@ -40,7 +40,7 @@ function ConfirmationContent() {
     );
   }
 
-  if (!reservation || !reservation.vol) {
+  if (!reservation || (!reservation.vol && !reservation.lien_paiement)) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500">Réservation non trouvée</p>
@@ -49,7 +49,13 @@ function ConfirmationContent() {
     );
   }
 
+  // Support both vol-based and payment link-based reservations
   const vol = reservation.vol;
+  const lien = reservation.lien_paiement;
+  const origineCode = vol?.origine || lien?.origine || lien?.ville_origine?.substring(0, 3).toUpperCase() || '???';
+  const destinationCode = vol?.destination || lien?.destination || lien?.ville_destination?.substring(0, 3).toUpperCase() || '???';
+  const villeOrigine = vol?.ville_origine || lien?.ville_origine || '';
+  const villeDestination = vol?.ville_destination || lien?.ville_destination || '';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -98,8 +104,8 @@ function ConfirmationContent() {
           <div className="mt-6 bg-blue-light rounded-xl p-5">
             <div className="flex items-center justify-center gap-4">
               <div className="text-center">
-                <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-dark">{vol.origine}</p>
-                <p className="text-sm text-gray-500">{vol.ville_origine}</p>
+                <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-dark">{origineCode}</p>
+                <p className="text-sm text-gray-500">{villeOrigine}</p>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-8 h-[2px] bg-blue-primary/30" />
@@ -107,8 +113,8 @@ function ConfirmationContent() {
                 <div className="w-8 h-[2px] bg-blue-primary/30" />
               </div>
               <div className="text-center">
-                <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-dark">{vol.destination}</p>
-                <p className="text-sm text-gray-500">{vol.ville_destination}</p>
+                <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-blue-dark">{destinationCode}</p>
+                <p className="text-sm text-gray-500">{villeDestination}</p>
               </div>
             </div>
           </div>

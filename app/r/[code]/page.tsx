@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { Vol } from '@/types';
+import { LienPaiement } from '@/types';
 import { formatCurrency, formatDate, calculatePrime } from '@/lib/utils';
 import { MOETLY_CONFIG } from '@/lib/constants';
 import Button from '@/components/ui/Button';
-import { ArrowLeft, Plane, Shield, CreditCard, Calendar, TrendingUp, Lock } from 'lucide-react';
-import Link from 'next/link';
+import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useRouter } from 'next/navigation';
@@ -60,10 +59,11 @@ function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; re
   );
 }
 
-export default function FlightDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const [vol, setVol] = useState<Vol | null>(null);
+export default function PaymentLinkPage({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = use(params);
+  const [lien, setLien] = useState<LienPaiement | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [duree, setDuree] = useState(60);
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState('');
@@ -73,15 +73,20 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/vols`)
-      .then(res => res.json())
+    fetch(`/api/liens/${code}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Lien non trouvé');
+        return res.json();
+      })
       .then(data => {
-        const found = Array.isArray(data) ? data.find((v: Vol) => v.id === id) : null;
-        setVol(found || null);
+        setLien(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, [id]);
+      .catch(() => {
+        setError('Ce lien de paiement est introuvable ou a expiré.');
+        setLoading(false);
+      });
+  }, [code]);
 
   if (loading) {
     return (
@@ -91,16 +96,45 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  if (!vol) {
+  if (error || !lien) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-500">Vol non trouvé</p>
-        <Link href="/" className="text-blue-primary hover:underline">Retour aux vols</Link>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-4">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-error" />
+        </div>
+        <p className="text-gray-700 font-medium text-lg text-center">{error || 'Lien non trouvé'}</p>
+        <p className="text-gray-500 text-sm text-center">Vérifiez le lien auprès de votre vendeur.</p>
       </div>
     );
   }
 
-  const prime = calculatePrime(vol.prix_actuel, MOETLY_CONFIG.PRIME_RATE + (duree === 90 ? 0.005 : 0));
+  if (!lien.actif) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-4">
+        <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-yellow-dark" />
+        </div>
+        <p className="text-gray-700 font-medium text-lg text-center">Ce lien n&apos;est plus actif</p>
+        <p className="text-gray-500 text-sm text-center">Contactez votre vendeur pour un nouveau lien.</p>
+      </div>
+    );
+  }
+
+  if (lien.usage_unique && lien.nb_paiements > 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-4">
+        <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-yellow-dark" />
+        </div>
+        <p className="text-gray-700 font-medium text-lg text-center">Ce lien a déjà été utilisé</p>
+        <p className="text-gray-500 text-sm text-center">Contactez votre vendeur pour un nouveau lien.</p>
+      </div>
+    );
+  }
+
+  const prix = lien.prix;
+  const effectiveRate = MOETLY_CONFIG.PRIME_RATE + (duree === 90 ? 0.005 : 0);
+  const prime = calculatePrime(prix, effectiveRate);
   const expirationDate = new Date();
   expirationDate.setDate(expirationDate.getDate() + duree);
 
@@ -113,11 +147,10 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          vol_id: vol.id,
+          lien_paiement_id: lien.id,
           consommateur_email: email,
           consommateur_prenom: prenom,
           duree_jours: duree,
-          marchand_id: null,
         }),
       });
 
@@ -126,6 +159,8 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
         setReservationId(data.reservation_id);
+      } else {
+        setError(data.error || 'Erreur lors de la création du paiement');
       }
     } catch {
       console.error('Payment init error');
@@ -139,9 +174,6 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-gray-500 hover:text-gray-900 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-blue-primary rounded-lg flex items-center justify-center">
               <Plane className="w-4 h-4 text-white" />
@@ -150,24 +182,34 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               Moetly<span className="text-yellow-accent">Pay</span>
             </span>
           </div>
+          <div className="ml-auto flex items-center gap-1 text-sm text-gray-500">
+            <Shield className="w-4 h-4 text-success" />
+            Paiement sécurisé
+          </div>
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* Flight info card */}
         <div className="bg-gradient-to-br from-blue-dark to-blue-primary rounded-2xl p-6 sm:p-8 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm bg-white/20 px-3 py-1 rounded-full">{vol.compagnie}</span>
-            <div className="flex items-center gap-1 text-yellow-accent text-sm">
-              <TrendingUp className="w-4 h-4" />
-              Prix en hausse
+          {lien.compagnie && (
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm bg-white/20 px-3 py-1 rounded-full">{lien.compagnie}</span>
+              {lien.date_vol && (
+                <div className="flex items-center gap-1 text-white/80 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(lien.date_vol)}
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           <div className="flex items-center justify-between">
             <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.origine}</p>
-              <p className="text-white/70 text-sm mt-1">{vol.ville_origine}</p>
+              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
+                {lien.origine || lien.ville_origine.substring(0, 3).toUpperCase()}
+              </p>
+              <p className="text-white/70 text-sm mt-1">{lien.ville_origine}</p>
             </div>
             <div className="flex items-center gap-2 px-4">
               <div className="w-12 h-[2px] bg-white/30" />
@@ -175,32 +217,50 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               <div className="w-12 h-[2px] bg-white/30" />
             </div>
             <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.destination}</p>
-              <p className="text-white/70 text-sm mt-1">{vol.ville_destination}</p>
+              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
+                {lien.destination || lien.ville_destination.substring(0, 3).toUpperCase()}
+              </p>
+              <p className="text-white/70 text-sm mt-1">{lien.ville_destination}</p>
             </div>
           </div>
 
           <div className="mt-6 flex items-end justify-between">
-            <div className="flex items-center gap-2 text-white/80 text-sm">
-              <Calendar className="w-4 h-4" />
-              {formatDate(vol.date_vol)}
-            </div>
-            <p className="text-3xl font-[family-name:var(--font-sora)] font-bold">
-              {formatCurrency(vol.prix_actuel)}
+            {!lien.compagnie && lien.date_vol && (
+              <div className="flex items-center gap-2 text-white/80 text-sm">
+                <Calendar className="w-4 h-4" />
+                {formatDate(lien.date_vol)}
+              </div>
+            )}
+            {!lien.compagnie && !lien.date_vol && <div />}
+            <p className="text-3xl font-[family-name:var(--font-sora)] font-bold ml-auto">
+              {formatCurrency(prix)}
             </p>
           </div>
 
           <div className="mt-4 bg-yellow-accent/20 border border-yellow-accent/30 rounded-xl px-4 py-2 text-sm text-center">
             <Lock className="w-4 h-4 inline mr-1" />
-            Prix garanti jusqu&apos;au {formatDate(expirationDate.toISOString())}
+            Bloquez ce prix jusqu&apos;au {formatDate(expirationDate.toISOString())}
           </div>
         </div>
 
+        {/* Note from seller */}
+        {lien.note_marchand && (
+          <div className="mt-4 bg-blue-light border border-blue-primary/20 rounded-xl px-5 py-4">
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold text-blue-dark">Note du vendeur :</span>{' '}
+              {lien.note_marchand}
+            </p>
+          </div>
+        )}
+
         {/* Calculator */}
         <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-          <h2 className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-6">
-            Calculez votre réservation
+          <h2 className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-2">
+            Bloquez ce prix maintenant
           </h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Payez une petite prime pour garantir le prix de votre billet. Vous payez le reste plus tard.
+          </p>
 
           {/* Duration selector */}
           <div className="flex gap-3">
@@ -226,10 +286,10 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
           <div className="mt-6 space-y-3">
             <div className="flex justify-between text-gray-600">
               <span>Prix du billet</span>
-              <span className="font-medium">{formatCurrency(vol.prix_actuel)}</span>
+              <span className="font-medium">{formatCurrency(prix)}</span>
             </div>
             <div className="flex justify-between text-blue-primary font-semibold">
-              <span>Prime de réservation ({Math.round((MOETLY_CONFIG.PRIME_RATE + (duree === 90 ? 0.005 : 0)) * 100 * 10) / 10}%)</span>
+              <span>Prime de réservation ({Math.round(effectiveRate * 100 * 10) / 10}%)</span>
               <span>{formatCurrency(prime.montant_prime)}</span>
             </div>
             <div className="border-t border-gray-200 pt-3">
@@ -331,6 +391,12 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               <PaymentForm clientSecret={clientSecret} reservationId={reservationId} />
             </Elements>
           )}
+        </div>
+
+        {/* Footer trust badges */}
+        <div className="mt-6 text-center text-xs text-gray-400 space-y-1">
+          <p>Paiement sécurisé via Stripe</p>
+          <p>Moetly Pay — Bloquez le prix, payez plus tard</p>
         </div>
       </div>
     </div>
