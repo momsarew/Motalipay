@@ -84,3 +84,35 @@ export interface DashboardKPIs {
   taux_finalisation: number;
   jours_visibilite_moyenne: number;
 }
+
+export interface TemplateRoute {
+  id: string;
+  marchand_id: string;
+  nom: string;
+  ville_origine: string;
+  ville_destination: string;
+  origine?: string;
+  destination?: string;
+  compagnie?: string;
+  prix_defaut?: number;
+  created_at: string;
+}
+
+export interface ParsedBooking {
+  ville_origine?: string;
+  ville_destination?: string;
+  origine?: string;
+  destination?: string;
+  prix?: number;
+  date_vol?: string;
+  compagnie?: string;
+  reference_billet?: string;
+  confidence: Record<string, number>;
+}
+
+export interface BulkCreateResult {
+  success: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+  liens: LienPaiement[];
+}
