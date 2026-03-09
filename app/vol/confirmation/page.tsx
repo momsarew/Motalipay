@@ -16,6 +16,7 @@ function ConfirmationContent() {
   const reservationId = searchParams.get('reservation_id');
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardToken, setDashboardToken] = useState('');
 
   useEffect(() => {
     if (!reservationId) {
@@ -28,6 +29,17 @@ function ConfirmationContent() {
       .then(data => {
         setReservation(data);
         setLoading(false);
+        // Fetch dashboard token for the consumer
+        if (data.consommateur_email) {
+          fetch('/api/auth/consumer-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: data.consommateur_email }),
+          })
+            .then(r => r.json())
+            .then(t => { if (t.token) setDashboardToken(t.token); })
+            .catch(() => {});
+        }
       })
       .catch(() => setLoading(false));
   }, [reservationId]);
@@ -44,7 +56,7 @@ function ConfirmationContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <p className="text-gray-500">Réservation non trouvée</p>
-        <Link href="/" className="text-blue-primary hover:underline">Retour aux vols</Link>
+        <Link href="/" className="text-blue-primary hover:underline">Retour a l&apos;accueil</Link>
       </div>
     );
   }
@@ -97,7 +109,7 @@ function ConfirmationContent() {
           className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8"
         >
           <h1 className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900 text-center">
-            Réservation confirmée !
+            Paiement recu ! Votre prix est bloque.
           </h1>
 
           {/* Flight recap */}
@@ -148,14 +160,22 @@ function ConfirmationContent() {
 
           {/* Actions */}
           <div className="mt-8 flex flex-col gap-3">
-            <Link href={`/dashboard?email=${encodeURIComponent(reservation.consommateur_email)}`}>
+            <Link href={`/dashboard?email=${encodeURIComponent(reservation.consommateur_email)}${dashboardToken ? `&token=${dashboardToken}` : ''}`}>
               <Button variant="primary" size="lg" className="w-full">
-                Voir ma réservation
+                Voir ma reservation
               </Button>
             </Link>
+            <div className="mt-4">
+              <Link
+                href="/compte"
+                className="text-sm text-blue-primary hover:underline"
+              >
+                Creez votre compte pour retrouver toutes vos reservations &rarr;
+              </Link>
+            </div>
             <Link href="/">
               <Button variant="ghost" size="md" className="w-full">
-                Retour aux vols
+                Retour a l&apos;accueil
               </Button>
             </Link>
           </div>

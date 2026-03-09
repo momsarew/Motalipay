@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
-import { Plane, BarChart3, ClipboardList, Link2, LogOut, User, ExternalLink } from 'lucide-react';
+import { Plane, BarChart3, ClipboardList, Link2, LogOut, User, ExternalLink, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 
 const navItems = [
@@ -18,9 +18,15 @@ export default function MarchandLayout({ children }: { children: React.ReactNode
   const router = useRouter();
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Skip auth check on login page
   const isLoginPage = pathname === '/marchand/login';
+
+  // Close sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (isLoginPage) {
@@ -61,8 +67,40 @@ export default function MarchandLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-blue-dark to-[#0a3666] text-white flex flex-col fixed h-full z-10">
+      {/* Mobile header bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-gradient-to-r from-blue-dark to-[#0a3666] text-white flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+            <Plane className="w-4 h-4 text-blue-primary" />
+          </div>
+          <span className="text-base font-[family-name:var(--font-sora)] font-bold">
+            Moetly<span className="text-yellow-accent">Pay</span>
+          </span>
+        </div>
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-all cursor-pointer"
+          aria-label="Menu"
+        >
+          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — hidden on mobile, shown on lg+ */}
+      <aside className={`
+        w-64 bg-gradient-to-b from-blue-dark to-[#0a3666] text-white flex flex-col fixed h-full z-40
+        transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+      `}>
         {/* Logo */}
         <div className="px-6 py-6 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -100,7 +138,7 @@ export default function MarchandLayout({ children }: { children: React.ReactNode
         {/* User & logout */}
         <div className="px-3 pb-6 space-y-2">
           <div className="flex items-center gap-3 px-4 py-3 text-blue-200 text-sm">
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5 flex-shrink-0" />
             <span className="truncate">{user.email}</span>
           </div>
           <button
@@ -113,8 +151,8 @@ export default function MarchandLayout({ children }: { children: React.ReactNode
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 ml-64">
+      {/* Main content — offset for sidebar on lg+, offset for mobile header on mobile */}
+      <main className="flex-1 lg:ml-64 pt-14 lg:pt-0">
         {children}
       </main>
     </div>

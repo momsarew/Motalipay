@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { requireMarchandAuth } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 function generateShortCode(): string {
@@ -12,10 +13,13 @@ function generateShortCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { marchand_id, liens } = await req.json();
+    const auth = await requireMarchandAuth();
+    if (auth.error) return auth.error;
 
-    if (!marchand_id || !Array.isArray(liens) || liens.length === 0) {
-      return NextResponse.json({ error: 'Données invalides' }, { status: 400 });
+    const { liens } = await req.json();
+
+    if (!Array.isArray(liens) || liens.length === 0) {
+      return NextResponse.json({ error: 'Donnees invalides' }, { status: 400 });
     }
 
     if (liens.length > 50) {
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
         .from('liens_paiement')
         .insert({
           short_code: generateShortCode(),
-          marchand_id,
+          marchand_id: auth.marchand_id,
           ville_origine: lien.ville_origine,
           ville_destination: lien.ville_destination,
           origine: lien.origine || null,
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (error) {
-        results.errors.push({ row: i + 1, message: error.message });
+        results.errors.push({ row: i + 1, message: 'Erreur lors de la creation du lien' });
         results.failed++;
       } else {
         results.success++;
@@ -76,6 +80,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(results, { status: 201 });
   } catch {
-    return NextResponse.json({ error: 'Erreur interne' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 }

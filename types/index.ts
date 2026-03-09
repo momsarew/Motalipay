@@ -15,6 +15,7 @@ export interface LienPaiement {
   id: string;
   short_code: string;
   marchand_id: string;
+  secteur: 'transport' | 'evenement' | 'hebergement' | 'autre';
   ville_origine: string;
   ville_destination: string;
   origine?: string;
@@ -89,6 +90,7 @@ export interface TemplateRoute {
   id: string;
   marchand_id: string;
   nom: string;
+  secteur: 'transport' | 'evenement' | 'hebergement' | 'autre';
   ville_origine: string;
   ville_destination: string;
   origine?: string;

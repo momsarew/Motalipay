@@ -87,7 +87,7 @@ export default function ReservationsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Trajet', 'Prix bloqué', 'Total payé', 'Progression', 'Prime perçue', 'Statut', 'Date expiration', 'Email'];
+    const headers = ['ID', 'Trajet', 'Prix bloqué', 'Total versé', 'Épargne client', 'Prime perçue', 'Statut', 'Date expiration', 'Email'];
     const rows = reservations.map(r => {
       const vol = r.vol;
       const lien = r.lien_paiement;
@@ -124,9 +124,9 @@ export default function ReservationsPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
           Réservations
         </h1>
         <Button variant="ghost" size="sm" onClick={exportCSV}>
@@ -138,13 +138,13 @@ export default function ReservationsPage() {
       </div>
 
       {/* Tabs & Search */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {TABS.map(t => (
             <button
               key={t.value}
               onClick={() => { setTab(t.value); setPage(1); }}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
                 tab === t.value
                   ? 'bg-blue-primary text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -173,19 +173,19 @@ export default function ReservationsPage() {
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-gray-500">Aucune réservation trouvée</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-4 text-gray-500 font-medium">ID</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Trajet</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Client</th>
-                  <th className="text-right p-4 text-gray-500 font-medium">Montant</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Progression</th>
-                  <th className="text-right p-4 text-gray-500 font-medium">Prime perçue</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Statut</th>
-                  <th className="text-left p-4 text-gray-500 font-medium">Expiration</th>
-                  <th className="text-right p-4 text-gray-500 font-medium">Actions</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">ID</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">Trajet</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">Client</th>
+                  <th className="text-right p-3 sm:p-4 text-gray-500 font-medium text-xs">Montant</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">Épargne</th>
+                  <th className="text-right p-3 sm:p-4 text-gray-500 font-medium text-xs">Prime</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">Statut</th>
+                  <th className="text-left p-3 sm:p-4 text-gray-500 font-medium text-xs">Expiration</th>
+                  <th className="text-right p-3 sm:p-4 text-gray-500 font-medium text-xs">Actions</th>
                 </tr>
               </thead>
               <tbody>

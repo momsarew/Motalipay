@@ -1,8 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Plane, Shield, Clock, CreditCard, Link2, BarChart3,
   Zap, Send, Code, ArrowRight, CheckCircle,
-  Lock, TrendingUp,
+  Lock, TrendingUp, Music, Building, Package,
+  Menu, X,
 } from 'lucide-react';
 import { MOETLY_CONFIG } from '@/lib/constants';
 import { formatCurrency } from '@/lib/utils';
@@ -14,6 +18,8 @@ const partMarchand = Math.round(prime * MOETLY_CONFIG.MARCHAND_SHARE * 100) / 10
 const partMoetly = Math.round(prime * MOETLY_CONFIG.MOETLY_SHARE * 100) / 100;
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ===== HEADER ===== */}
@@ -38,20 +44,51 @@ export default function LandingPage() {
               Tarifs
             </a>
             <Link
+              href="/compte"
+              className="text-sm text-gray-500 hover:text-blue-primary transition-colors"
+            >
+              Espace client
+            </Link>
+            <Link
               href="/marchand/login"
               className="text-sm font-semibold text-blue-primary border border-blue-primary px-4 py-2 rounded-xl hover:bg-blue-light transition-all"
             >
               Espace Marchand
             </Link>
           </nav>
-          {/* Mobile: lien simplifié */}
-          <Link
-            href="/marchand/login"
-            className="sm:hidden text-sm text-blue-primary font-semibold"
+          {/* Mobile: hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
+            aria-label="Menu"
           >
-            Connexion
-          </Link>
+            {mobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          </button>
         </div>
+        {/* Mobile nav dropdown */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
+            <a href="#comment-ca-marche" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
+              Comment ça marche
+            </a>
+            <a href="#avantages" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
+              Avantages
+            </a>
+            <a href="#tarifs" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
+              Tarifs
+            </a>
+            <Link href="/compte" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
+              Espace client
+            </Link>
+            <Link
+              href="/marchand/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-center text-sm font-semibold text-white bg-blue-primary px-4 py-3 rounded-xl hover:bg-blue-dark transition-all"
+            >
+              Espace Marchand
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* ===== HERO ===== */}
@@ -63,13 +100,14 @@ export default function LandingPage() {
         }} />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-[family-name:var(--font-sora)] font-extrabold text-white leading-tight">
-            Augmentez vos ventes avec
+            Convertissez plus,
             <br />
-            <span className="text-yellow-accent">le paiement différé.</span>
+            <span className="text-yellow-accent">risquez moins.</span>
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto">
-            Vos clients hésitent à cause du prix ? Proposez-leur de bloquer le tarif
-            et de payer à leur rythme. Vous, vous êtes payé immédiatement.
+            Vos clients bloquent le tarif avec une prime et épargnent à leur rythme.
+            S&apos;ils finalisent, vous vendez. S&apos;ils abandonnent, vous gardez la prime
+            et revendez le produit.
           </p>
 
           {/* CTAs */}
@@ -93,7 +131,7 @@ export default function LandingPage() {
           <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
             {[
               { icon: Zap, text: 'Prêt en 30 secondes' },
-              { icon: CreditCard, text: 'Commission simple 5%' },
+              { icon: CreditCard, text: 'Prime de 5% non remboursable' },
               { icon: Shield, text: 'Paiements via Stripe' },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-2 text-white/90">
@@ -116,7 +154,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-blue-primary" />
-            <span>Données chiffrées SSL/TLS</span>
+            <span>Fonds sécurisés chez <strong className="text-gray-700">Moetly Pay</strong></span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-success" />
@@ -131,7 +169,7 @@ export default function LandingPage() {
           Comment ça marche ?
         </h2>
         <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-          En 3 étapes simples, proposez le paiement différé à vos clients
+          En 3 étapes simples, proposez le blocage de tarif à vos clients
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
           {[
@@ -150,8 +188,8 @@ export default function LandingPage() {
             {
               step: '3',
               icon: CreditCard,
-              title: 'Recevez les paiements',
-              desc: 'Le client paie la prime immédiatement, puis le reste à son rythme. Suivez tout depuis votre dashboard.',
+              title: 'Suivez les paiements',
+              desc: 'Le client verse la prime puis épargne à son rythme. Suivez chaque versement et votre pipeline depuis le dashboard.',
             },
           ].map(({ step, icon: Icon, title, desc }) => (
             <div key={step} className="text-center">
@@ -191,7 +229,7 @@ export default function LandingPage() {
                 color: 'text-blue-primary',
                 bg: 'bg-blue-light',
                 title: 'Dashboard temps réel',
-                desc: 'Suivez vos réservations actives, le volume garanti, les paiements reçus et le taux de finalisation.',
+                desc: 'Suivez vos réservations actives, l\u2019épargne de vos clients, vos primes acquises et le taux de finalisation.',
               },
               {
                 icon: Shield,
@@ -204,8 +242,8 @@ export default function LandingPage() {
                 icon: Clock,
                 color: 'text-yellow-dark',
                 bg: 'bg-yellow-light',
-                title: 'Multi-paiement flexible',
-                desc: 'Vos clients paient la prime maintenant et le reste à leur rythme, en autant de versements qu\u2019ils veulent.',
+                title: 'Épargne flexible',
+                desc: 'Vos clients versent la prime puis épargnent à leur rythme chez Moetly Pay. Les fonds leur restent accessibles à tout moment.',
               },
               {
                 icon: Code,
@@ -218,8 +256,8 @@ export default function LandingPage() {
                 icon: TrendingUp,
                 color: 'text-success',
                 bg: 'bg-emerald-50',
-                title: 'Convertissez les hésitants',
-                desc: 'Les clients qui hésitent à cause du prix deviennent des acheteurs. Augmentez votre taux de conversion.',
+                title: 'Gagnez dans tous les cas',
+                desc: 'Si le client finalise, vous vendez. S\u2019il abandonne, vous gardez la prime non remboursable et revendez le produit.',
               },
             ].map(({ icon: Icon, color, bg, title, desc }) => (
               <div
@@ -236,6 +274,34 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ===== SECTEURS ===== */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
+          Un seul outil, tous vos secteurs
+        </h2>
+        <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
+          Moetly Pay s&apos;adapte à votre activité. Bloquez un prix, quel que soit le secteur.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { icon: Plane, emoji: '✈️', title: 'Transport', desc: 'Billets d\'avion, train, bus. Vos clients bloquent le tarif et épargnent pour leur voyage.', color: 'text-blue-primary', bg: 'bg-blue-light' },
+            { icon: Music, emoji: '🎫', title: 'Événements', desc: 'Concerts, spectacles, sport. Bloquez le prix d\'une place avant qu\'elle ne soit épuisée.', color: 'text-purple-600', bg: 'bg-purple-50' },
+            { icon: Building, emoji: '🏨', title: 'Hébergement', desc: 'Hôtels, locations, séjours. Sécurisez un tarif et laissez vos clients épargner.', color: 'text-amber-600', bg: 'bg-amber-50' },
+            { icon: Package, emoji: '📦', title: 'Sur mesure', desc: 'Formations, services, prestations. Adaptez le blocage de tarif à votre métier.', color: 'text-success', bg: 'bg-emerald-50' },
+          ].map(({ icon: Icon, emoji, title, desc, color, bg }) => (
+            <div key={title} className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all text-center">
+              <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mx-auto mb-3`}>
+                <Icon className={`w-6 h-6 ${color}`} />
+              </div>
+              <h3 className="text-base font-[family-name:var(--font-sora)] font-semibold text-gray-900 mb-1">
+                {emoji} {title}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -327,7 +393,7 @@ export default function LandingPage() {
             Tarification simple et transparente
           </h2>
           <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-            Pas de frais cachés, pas d&apos;abonnement. Vous ne payez que quand vous vendez.
+            Pas de frais cachés, pas d&apos;abonnement. Vous touchez votre part de prime dès le blocage.
           </p>
 
           <div className="max-w-lg mx-auto bg-white rounded-2xl border-2 border-blue-primary shadow-lg overflow-hidden">
@@ -339,7 +405,7 @@ export default function LandingPage() {
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-5xl font-[family-name:var(--font-sora)] font-extrabold">5%</span>
               </div>
-              <p className="mt-2 text-blue-100">de commission sur la prime de réservation</p>
+              <p className="mt-2 text-blue-100">de prime non remboursable sur chaque blocage de tarif</p>
             </div>
 
             {/* Pricing example */}
@@ -349,7 +415,7 @@ export default function LandingPage() {
               </h4>
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-500">Billet vendu</span>
+                  <span className="text-gray-500">Produit vendu</span>
                   <span className="font-medium text-gray-900">{formatCurrency(EXEMPLE_PRIX)}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
@@ -365,6 +431,13 @@ export default function LandingPage() {
                   <span className="text-gray-500">Part Moetly (30%)</span>
                   <span className="font-medium text-gray-400">{formatCurrency(partMoetly)}</span>
                 </div>
+              </div>
+
+              <div className="bg-blue-light/50 border border-blue-primary/10 rounded-lg p-3 mb-6">
+                <p className="text-xs text-blue-dark leading-relaxed">
+                  <strong>Modèle escrow :</strong> les versements du client sont sécurisés chez Moetly Pay.
+                  Vous recevez votre part de prime au blocage, puis le prix total à la finalisation.
+                </p>
               </div>
 
               {/* Inclusions */}
@@ -402,10 +475,10 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-dark to-blue-primary" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center">
           <h2 className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-extrabold text-white mb-4">
-            Prêt à augmenter vos ventes ?
+            Prêt à convertir plus de clients ?
           </h2>
           <p className="text-lg text-blue-100 mb-8 max-w-xl mx-auto">
-            Rejoignez les marchands qui utilisent Moetly Pay pour convertir plus de clients.
+            Rejoignez les marchands qui utilisent Moetly Pay pour ne plus perdre de ventes à cause du prix.
           </p>
           <Link
             href="/marchand/login"
@@ -435,14 +508,14 @@ export default function LandingPage() {
                 </span>
               </div>
               <p className="text-sm">
-                Paiement différé pour marchands de billets d&apos;avion
+                Blocage de tarif et paiement flexible pour marchands
               </p>
             </div>
 
             {/* Links */}
             <div className="flex flex-col gap-2">
               <a href="#comment-ca-marche" className="text-sm hover:text-white transition-colors">
-                Comment ça marche
+                Comment ca marche
               </a>
               <a href="#avantages" className="text-sm hover:text-white transition-colors">
                 Avantages
@@ -453,13 +526,27 @@ export default function LandingPage() {
               <Link href="/marchand/login" className="text-sm hover:text-white transition-colors">
                 Espace marchand
               </Link>
+              <Link href="/compte" className="text-sm hover:text-white transition-colors">
+                Espace client
+              </Link>
+              <Link href="/mentions-legales" className="text-sm hover:text-white transition-colors">
+                Mentions legales
+              </Link>
+              <Link href="/cgu" className="text-sm hover:text-white transition-colors">
+                CGU
+              </Link>
+              <Link href="/confidentialite" className="text-sm hover:text-white transition-colors">
+                Confidentialite
+              </Link>
             </div>
 
             {/* Info */}
             <div className="text-right sm:text-right">
               <p className="text-sm">&copy; {new Date().getFullYear()} Moetly Fintech</p>
               <p className="text-sm">Tous droits réservés</p>
-              <p className="text-xs mt-2 text-gray-500">Mode test — Aucune transaction réelle</p>
+              {process.env.NODE_ENV === 'development' && (
+                <p className="text-xs mt-2 text-gray-500">Mode test — Aucune transaction reelle</p>
+              )}
             </div>
           </div>
         </div>

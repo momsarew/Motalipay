@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Paiements GET error:', error.message);
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 
   return NextResponse.json(data);
@@ -110,7 +111,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (paiError) {
-      return NextResponse.json({ error: paiError.message }, { status: 500 });
+      console.error('Paiement insert error:', paiError.message);
+      return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
     }
 
     return NextResponse.json({

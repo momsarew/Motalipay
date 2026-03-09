@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { LienPaiement, TemplateRoute, ParsedBooking, BulkCreateResult } from '@/types';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
+import { SECTEURS, Secteur } from '@/lib/constants';
 import { parseCSV, generateTemplateCSV } from '@/lib/csv-parser';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -13,6 +14,7 @@ import {
   ToggleLeft, ToggleRight, Send, MessageCircle,
   ClipboardPaste, FileUp, Bookmark, X, Sparkles,
   AlertCircle, Download, Trash2, Loader2,
+  Plane, Music, Building, Package,
 } from 'lucide-react';
 
 // ============================================
@@ -20,6 +22,13 @@ import {
 // ============================================
 
 type ModalType = 'none' | 'paste' | 'csv';
+
+const SECTEUR_ICONS = {
+  transport: Plane,
+  evenement: Music,
+  hebergement: Building,
+  autre: Package,
+} as const;
 
 // ============================================
 // Composant principal
@@ -35,6 +44,7 @@ export default function LiensPage() {
   const [newLinkUrl, setNewLinkUrl] = useState('');
 
   // Form state
+  const [secteur, setSecteur] = useState<Secteur>('transport');
   const [villeOrigine, setVilleOrigine] = useState('');
   const [villeDestination, setVilleDestination] = useState('');
   const [origine, setOrigine] = useState('');
@@ -111,16 +121,26 @@ export default function LiensPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleShareWhatsApp = (shortCode: string, villeOrig: string, villeDest: string, lienPrix: number) => {
+  const handleShareWhatsApp = (shortCode: string, villeOrig: string, villeDest: string, lienPrix: number, lienSecteur?: string) => {
     const url = getLienUrl(shortCode);
-    const text = `Bonjour ! Voici le lien pour bloquer le prix de votre billet ${villeOrig} → ${villeDest} (${formatCurrency(lienPrix)}) :\n\n${url}\n\nVous payez une petite prime maintenant et le reste plus tard. — Moetly Pay`;
+    const s = (lienSecteur || 'transport') as Secteur;
+    const cfg = SECTEURS[s];
+    const desc = cfg.display.showRoute
+      ? `${villeOrig} → ${villeDest}`
+      : (villeDest || villeOrig);
+    const text = `Bonjour ! Voici le lien pour bloquer le prix (${formatCurrency(lienPrix)}) :\n${desc}\n\n${url}\n\nVersez une prime pour bloquer et épargnez à votre rythme. — Moetly Pay`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleShareEmail = (shortCode: string, villeOrig: string, villeDest: string, lienPrix: number) => {
+  const handleShareEmail = (shortCode: string, villeOrig: string, villeDest: string, lienPrix: number, lienSecteur?: string) => {
     const url = getLienUrl(shortCode);
-    const subject = `Bloquez le prix de votre billet ${villeOrig} → ${villeDest}`;
-    const body = `Bonjour,\n\nVoici le lien pour bloquer le prix de votre billet ${villeOrig} → ${villeDest} à ${formatCurrency(lienPrix)} :\n\n${url}\n\nPayez une petite prime maintenant et le reste plus tard.\n\nCordialement`;
+    const s = (lienSecteur || 'transport') as Secteur;
+    const cfg = SECTEURS[s];
+    const desc = cfg.display.showRoute
+      ? `${villeOrig} → ${villeDest}`
+      : (villeDest || villeOrig);
+    const subject = `Bloquez le prix — ${desc}`;
+    const body = `Bonjour,\n\nVoici le lien pour bloquer le prix de ${desc} à ${formatCurrency(lienPrix)} :\n\n${url}\n\nVersez une prime pour bloquer et épargnez le reste à votre rythme.\n\nCordialement`;
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
   };
 
@@ -134,6 +154,7 @@ export default function LiensPage() {
   };
 
   const resetForm = () => {
+    setSecteur('transport');
     setVilleOrigine(''); setVilleDestination('');
     setOrigine(''); setDestination('');
     setPrix(''); setDateVol('');
@@ -173,6 +194,7 @@ export default function LiensPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           marchand_id: marchandId,
+          secteur,
           ville_origine: villeOrigine,
           ville_destination: villeDestination,
           origine: origine || undefined,
@@ -355,7 +377,7 @@ export default function LiensPage() {
   // ============================================
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* ===== PAGE HEADER ===== */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -473,40 +495,84 @@ export default function LiensPage() {
               Nouveau lien de paiement
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ville d&apos;origine <span className="text-error">*</span></label>
-                <input type="text" value={villeOrigine} onChange={e => setVilleOrigine(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="ex: Paris" required />
+            {/* Sélecteur de secteur */}
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Secteur</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(Object.entries(SECTEURS) as [Secteur, typeof SECTEURS[Secteur]][]).map(([key, cfg]) => {
+                  const Icon = SECTEUR_ICONS[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSecteur(key)}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all cursor-pointer ${
+                        secteur === key
+                          ? 'border-blue-primary bg-blue-light text-blue-primary'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{cfg.emoji} {cfg.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ville de destination <span className="text-error">*</span></label>
-                <input type="text" value={villeDestination} onChange={e => setVilleDestination(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="ex: Dakar" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code IATA origine</label>
-                <input type="text" value={origine} onChange={e => setOrigine(e.target.value.toUpperCase().slice(0, 3))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm uppercase" placeholder="ex: CDG" maxLength={3} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code IATA destination</label>
-                <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase().slice(0, 3))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm uppercase" placeholder="ex: DSS" maxLength={3} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prix du billet (€) <span className="text-error">*</span></label>
-                <input type="number" value={prix} onChange={e => setPrix(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="ex: 680" min="1" step="0.01" required />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date de vol</label>
-                <input type="date" value={dateVol} onChange={e => setDateVol(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Compagnie aérienne</label>
-                <input type="text" value={compagnie} onChange={e => setCompagnie(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="ex: Air Sénégal" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Référence billet</label>
-                <input type="text" value={referenceBillet} onChange={e => setReferenceBillet(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="Votre référence interne" />
-              </div>
+              <p className="text-xs text-gray-400 mt-1">{SECTEURS[secteur].description}</p>
             </div>
+
+            {/* Champs dynamiques selon le secteur */}
+            {(() => {
+              const fields = SECTEURS[secteur].fields;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {fields.ville_origine.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.ville_origine.label} {fields.ville_origine.required && <span className="text-error">*</span>}</label>
+                      <input type="text" value={villeOrigine} onChange={e => setVilleOrigine(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder={fields.ville_origine.placeholder} required={fields.ville_origine.required} />
+                    </div>
+                  )}
+                  {fields.ville_destination.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.ville_destination.label} {fields.ville_destination.required && <span className="text-error">*</span>}</label>
+                      <input type="text" value={villeDestination} onChange={e => setVilleDestination(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder={fields.ville_destination.placeholder} required={fields.ville_destination.required} />
+                    </div>
+                  )}
+                  {fields.origine.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.origine.label}</label>
+                      <input type="text" value={origine} onChange={e => setOrigine(e.target.value.toUpperCase().slice(0, 3))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm uppercase" placeholder={fields.origine.placeholder} maxLength={3} />
+                    </div>
+                  )}
+                  {fields.destination.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.destination.label}</label>
+                      <input type="text" value={destination} onChange={e => setDestination(e.target.value.toUpperCase().slice(0, 3))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm uppercase" placeholder={fields.destination.placeholder} maxLength={3} />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{SECTEURS[secteur].display.priceLabel} (€) <span className="text-error">*</span></label>
+                    <input type="number" value={prix} onChange={e => setPrix(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="ex: 680" min="1" step="0.01" required />
+                  </div>
+                  {fields.date_vol.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.date_vol.label}</label>
+                      <input type="date" value={dateVol} onChange={e => setDateVol(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" />
+                    </div>
+                  )}
+                  {fields.compagnie.visible && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{fields.compagnie.label}</label>
+                      <input type="text" value={compagnie} onChange={e => setCompagnie(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder={fields.compagnie.placeholder} />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Référence interne</label>
+                    <input type="text" value={referenceBillet} onChange={e => setReferenceBillet(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none text-sm" placeholder="Votre référence interne" />
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Note pour le client</label>
@@ -782,30 +848,54 @@ export default function LiensPage() {
           </Button>
         </Card>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden -mx-4 sm:mx-0">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="px-5 py-3">Trajet</th>
-                  <th className="px-5 py-3">Prix</th>
-                  <th className="px-5 py-3">Vues</th>
-                  <th className="px-5 py-3">Paiements</th>
-                  <th className="px-5 py-3">Statut</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="px-3 sm:px-5 py-3">Description</th>
+                  <th className="px-3 sm:px-5 py-3">Prix</th>
+                  <th className="px-3 sm:px-5 py-3">Vues</th>
+                  <th className="px-3 sm:px-5 py-3">Paiements</th>
+                  <th className="px-3 sm:px-5 py-3">Statut</th>
+                  <th className="px-3 sm:px-5 py-3">Date</th>
+                  <th className="px-3 sm:px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {liens.map(lien => (
                   <tr key={lien.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{lien.ville_origine}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className="font-semibold text-gray-900">{lien.ville_destination}</span>
-                      </div>
-                      {lien.compagnie && <p className="text-xs text-gray-500 mt-0.5">{lien.compagnie}</p>}
+                      {(() => {
+                        const s = lien.secteur || 'transport';
+                        const SIcon = SECTEUR_ICONS[s];
+                        const cfg = SECTEURS[s];
+                        return (
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <SIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              {cfg.display.showRoute ? (
+                                <>
+                                  <span className="font-semibold text-gray-900">{lien.ville_origine}</span>
+                                  <span className="text-gray-400">→</span>
+                                  <span className="font-semibold text-gray-900">{lien.ville_destination}</span>
+                                </>
+                              ) : (
+                                <span className="font-semibold text-gray-900">
+                                  {lien.ville_destination || lien.ville_origine}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {!cfg.display.showRoute && lien.ville_origine && lien.ville_destination && (
+                                <span>{lien.ville_origine} · </span>
+                              )}
+                              {lien.compagnie && <span>{lien.compagnie}</span>}
+                              {!lien.compagnie && <span className="text-gray-400">{cfg.label}</span>}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-4 font-semibold text-gray-900">{formatCurrency(lien.prix)}</td>
                     <td className="px-5 py-4">
@@ -824,10 +914,10 @@ export default function LiensPage() {
                         <button onClick={() => handleCopy(lien.short_code)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="Copier le lien">
                           {copiedId === lien.short_code ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-gray-500" />}
                         </button>
-                        <button onClick={() => handleShareWhatsApp(lien.short_code, lien.ville_origine, lien.ville_destination, lien.prix)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="WhatsApp">
+                        <button onClick={() => handleShareWhatsApp(lien.short_code, lien.ville_origine, lien.ville_destination, lien.prix, lien.secteur)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="WhatsApp">
                           <MessageCircle className="w-4 h-4 text-[#25D366]" />
                         </button>
-                        <button onClick={() => handleShareEmail(lien.short_code, lien.ville_origine, lien.ville_destination, lien.prix)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="Email">
+                        <button onClick={() => handleShareEmail(lien.short_code, lien.ville_origine, lien.ville_destination, lien.prix, lien.secteur)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="Email">
                           <Send className="w-4 h-4 text-gray-500" />
                         </button>
                         <button onClick={() => window.open(getLienUrl(lien.short_code), '_blank')} className="p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" title="Ouvrir">

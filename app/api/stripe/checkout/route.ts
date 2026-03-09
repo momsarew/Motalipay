@@ -3,12 +3,25 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { MOETLY_CONFIG } from '@/lib/constants';
 import { NextResponse } from 'next/server';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_DURATIONS = MOETLY_CONFIG.DURATIONS.map(d => d.days);
+
 export async function POST(req: Request) {
   try {
     const { vol_id, lien_paiement_id, consommateur_email, consommateur_prenom, duree_jours, marchand_id } = await req.json();
 
     if (!consommateur_email || !duree_jours) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 });
+    }
+
+    // Email format validation
+    if (!EMAIL_REGEX.test(consommateur_email)) {
+      return NextResponse.json({ error: 'Format email invalide' }, { status: 400 });
+    }
+
+    // Duration validation
+    if (!ALLOWED_DURATIONS.includes(duree_jours)) {
+      return NextResponse.json({ error: 'Duree invalide' }, { status: 400 });
     }
 
     if (!vol_id && !lien_paiement_id) {
@@ -43,6 +56,9 @@ export async function POST(req: Request) {
       }
 
       prix = parseFloat(lien.prix);
+      if (isNaN(prix) || prix <= 0) {
+        return NextResponse.json({ error: 'Prix invalide' }, { status: 400 });
+      }
       ville_origine = lien.ville_origine;
       ville_destination = lien.ville_destination;
       resolvedMarchandId = lien.marchand_id;
@@ -59,6 +75,9 @@ export async function POST(req: Request) {
       }
 
       prix = parseFloat(vol.prix_actuel);
+      if (isNaN(prix) || prix <= 0) {
+        return NextResponse.json({ error: 'Prix invalide' }, { status: 400 });
+      }
       ville_origine = vol.ville_origine;
       ville_destination = vol.ville_destination;
     }
@@ -114,7 +133,8 @@ export async function POST(req: Request) {
       .single();
 
     if (resError) {
-      return NextResponse.json({ error: resError.message }, { status: 500 });
+      console.error('Checkout reservation error:', resError.message);
+      return NextResponse.json({ error: 'Erreur lors de la creation de la reservation' }, { status: 500 });
     }
 
     // Insérer le 1er paiement (prime) dans la table paiements

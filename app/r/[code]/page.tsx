@@ -3,9 +3,9 @@
 import { useEffect, useState, use } from 'react';
 import { LienPaiement } from '@/types';
 import { formatCurrency, formatDate, calculatePrime } from '@/lib/utils';
-import { MOETLY_CONFIG } from '@/lib/constants';
+import { MOETLY_CONFIG, SECTEURS, Secteur } from '@/lib/constants';
 import Button from '@/components/ui/Button';
-import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle } from 'lucide-react';
+import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle, Music, Building, Package } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useRouter } from 'next/navigation';
@@ -52,9 +52,11 @@ function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; re
       >
         Confirmer le paiement
       </Button>
-      <p className="text-xs text-gray-400 text-center mt-3">
-        Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
-      </p>
+      {process.env.NODE_ENV === 'development' && (
+        <p className="text-xs text-gray-400 text-center mt-3">
+          Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
+        </p>
+      )}
     </form>
   );
 }
@@ -162,8 +164,9 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
       } else {
         setError(data.error || 'Erreur lors de la création du paiement');
       }
-    } catch {
-      console.error('Payment init error');
+    } catch (err) {
+      console.error('Payment init error:', err);
+      setError('Erreur de connexion au service de paiement. Veuillez reessayer.');
     } finally {
       setPaymentLoading(false);
     }
@@ -190,58 +193,101 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
       </header>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {/* Flight info card */}
-        <div className="bg-gradient-to-br from-blue-dark to-blue-primary rounded-2xl p-6 sm:p-8 text-white">
-          {lien.compagnie && (
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm bg-white/20 px-3 py-1 rounded-full">{lien.compagnie}</span>
-              {lien.date_vol && (
-                <div className="flex items-center gap-1 text-white/80 text-sm">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(lien.date_vol)}
+        {/* Merchant name */}
+        {lien.compagnie && (
+          <div className="mb-4 text-center">
+            <p className="text-sm text-gray-500">Vendu par</p>
+            <p className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">{lien.compagnie}</p>
+          </div>
+        )}
+
+        {/* Info card -- adapte au secteur */}
+        {(() => {
+          const s = (lien.secteur || 'transport') as Secteur;
+          const cfg = SECTEURS[s];
+          const SectorIcons = { transport: Plane, evenement: Music, hebergement: Building, autre: Package };
+          const SIcon = SectorIcons[s];
+
+          return (
+            <div className="bg-gradient-to-br from-blue-dark to-blue-primary rounded-2xl p-6 sm:p-8 text-white">
+              {/* Top badges */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  {lien.compagnie && (
+                    <span className="text-xs sm:text-sm bg-white/20 px-2 sm:px-3 py-1 rounded-full">{lien.compagnie}</span>
+                  )}
+                  {s !== 'transport' && (
+                    <span className="text-xs sm:text-sm bg-white/10 px-2 sm:px-3 py-1 rounded-full flex items-center gap-1">
+                      <SIcon className="w-3.5 h-3.5" /> {cfg.label}
+                    </span>
+                  )}
+                </div>
+                {lien.date_vol && (
+                  <div className="flex items-center gap-1 text-white/80 text-xs sm:text-sm">
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    {formatDate(lien.date_vol)}
+                  </div>
+                )}
+              </div>
+
+              {/* Content — route ou titre */}
+              {cfg.display.showRoute ? (
+                /* Transport: origine → destination */
+                <div className="flex items-center justify-between">
+                  <div className="text-center min-w-0 flex-1">
+                    <p className="text-2xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
+                      {lien.origine || lien.ville_origine.substring(0, 3).toUpperCase()}
+                    </p>
+                    <p className="text-white/70 text-xs sm:text-sm mt-1 truncate">{lien.ville_origine}</p>
+                  </div>
+                  <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 flex-shrink-0">
+                    <div className="w-6 sm:w-12 h-[2px] bg-white/30" />
+                    <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-accent" />
+                    <div className="w-6 sm:w-12 h-[2px] bg-white/30" />
+                  </div>
+                  <div className="text-center min-w-0 flex-1">
+                    <p className="text-2xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
+                      {lien.destination || lien.ville_destination.substring(0, 3).toUpperCase()}
+                    </p>
+                    <p className="text-white/70 text-xs sm:text-sm mt-1 truncate">{lien.ville_destination}</p>
+                  </div>
+                </div>
+              ) : (
+                /* Événement / Hébergement / Autre: titre + lieu */
+                <div className="text-center py-2">
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <SIcon className="w-8 h-8 text-yellow-accent" />
+                  </div>
+                  <p className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold">
+                    {lien.ville_destination || lien.ville_origine}
+                  </p>
+                  {lien.ville_destination && lien.ville_origine && (
+                    <p className="text-white/70 text-sm mt-2">{lien.ville_origine}</p>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          <div className="flex items-center justify-between">
-            <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
-                {lien.origine || lien.ville_origine.substring(0, 3).toUpperCase()}
-              </p>
-              <p className="text-white/70 text-sm mt-1">{lien.ville_origine}</p>
-            </div>
-            <div className="flex items-center gap-2 px-4">
-              <div className="w-12 h-[2px] bg-white/30" />
-              <Plane className="w-5 h-5 text-yellow-accent" />
-              <div className="w-12 h-[2px] bg-white/30" />
-            </div>
-            <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">
-                {lien.destination || lien.ville_destination.substring(0, 3).toUpperCase()}
-              </p>
-              <p className="text-white/70 text-sm mt-1">{lien.ville_destination}</p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-end justify-between">
-            {!lien.compagnie && lien.date_vol && (
-              <div className="flex items-center gap-2 text-white/80 text-sm">
-                <Calendar className="w-4 h-4" />
-                {formatDate(lien.date_vol)}
+              {/* Prix */}
+              <div className="mt-6 flex items-end justify-between">
+                {!lien.compagnie && lien.date_vol && !cfg.display.showRoute && (
+                  <div className="flex items-center gap-2 text-white/80 text-sm">
+                    <Calendar className="w-4 h-4" />
+                    {formatDate(lien.date_vol)}
+                  </div>
+                )}
+                {(!lien.date_vol || cfg.display.showRoute) && <div />}
+                <p className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold ml-auto">
+                  {formatCurrency(prix)}
+                </p>
               </div>
-            )}
-            {!lien.compagnie && !lien.date_vol && <div />}
-            <p className="text-3xl font-[family-name:var(--font-sora)] font-bold ml-auto">
-              {formatCurrency(prix)}
-            </p>
-          </div>
 
-          <div className="mt-4 bg-yellow-accent/20 border border-yellow-accent/30 rounded-xl px-4 py-2 text-sm text-center">
-            <Lock className="w-4 h-4 inline mr-1" />
-            Bloquez ce prix jusqu&apos;au {formatDate(expirationDate.toISOString())}
-          </div>
-        </div>
+              <div className="mt-4 bg-yellow-accent/20 border border-yellow-accent/30 rounded-xl px-4 py-2 text-sm text-center">
+                <Lock className="w-4 h-4 inline mr-1" />
+                Bloquez ce prix jusqu&apos;au {formatDate(expirationDate.toISOString())}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Note from seller */}
         {lien.note_marchand && (
@@ -259,16 +305,16 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
             Bloquez ce prix maintenant
           </h2>
           <p className="text-sm text-gray-500 mb-6">
-            Payez une petite prime pour garantir le prix de votre billet. Vous payez le reste plus tard.
+            Versez une prime (frais de reservation non remboursables) pour bloquer ce prix. Epargnez le reste a votre rythme chez Moetly Pay.
           </p>
 
           {/* Duration selector */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {MOETLY_CONFIG.DURATIONS.map(d => (
               <button
                 key={d.days}
                 onClick={() => setDuree(d.days)}
-                className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   duree === d.days
                     ? 'bg-blue-primary text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -276,7 +322,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
               >
                 {d.label}
                 {'recommended' in d && d.recommended && (
-                  <span className="block text-[10px] font-normal mt-0.5 opacity-80">RECOMMANDÉ</span>
+                  <span className="hidden sm:block text-[10px] font-normal mt-0.5 opacity-80">RECOMMANDÉ</span>
                 )}
               </button>
             ))}
@@ -285,7 +331,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
           {/* Breakdown */}
           <div className="mt-6 space-y-3">
             <div className="flex justify-between text-gray-600">
-              <span>Prix du billet</span>
+              <span>{SECTEURS[(lien.secteur || 'transport') as Secteur].display.priceLabel}</span>
               <span className="font-medium">{formatCurrency(prix)}</span>
             </div>
             <div className="flex justify-between text-blue-primary font-semibold">
@@ -294,11 +340,11 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
             </div>
             <div className="border-t border-gray-200 pt-3">
               <div className="flex justify-between text-lg font-[family-name:var(--font-sora)] font-bold text-blue-primary">
-                <span>Vous payez MAINTENANT</span>
+                <span>A regler aujourd&apos;hui</span>
                 <span>{formatCurrency(prime.montant_prime)}</span>
               </div>
               <div className="flex justify-between text-sm text-gray-500 mt-1">
-                <span>Reste à payer avant le {formatDate(expirationDate.toISOString())}</span>
+                <span>Reste à verser avant le {formatDate(expirationDate.toISOString())}</span>
                 <span>{formatCurrency(prime.reste_a_payer)}</span>
               </div>
             </div>
@@ -310,15 +356,15 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
             <div className="space-y-2.5">
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-primary text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
-                <p className="text-sm text-gray-700"><span className="font-semibold">Prix bloqué</span> — Le prix de votre billet est garanti pendant la durée choisie</p>
+                <p className="text-sm text-gray-700"><span className="font-semibold">Prix bloqué</span> — Le prix est garanti pendant la durée choisie</p>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-primary text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
-                <p className="text-sm text-gray-700"><span className="font-semibold">Sans crédit</span> — Ce n&apos;est pas un prêt, juste une petite prime de réservation</p>
+                <p className="text-sm text-gray-700"><span className="font-semibold">Fonds sécurisés</span> — Vos versements sont conservés chez Moetly Pay, retirables à tout moment</p>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-primary text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
-                <p className="text-sm text-gray-700"><span className="font-semibold">Payez plus tard</span> — Finalisez l&apos;achat de votre billet quand vous êtes prêt</p>
+                <p className="text-sm text-gray-700"><span className="font-semibold">Épargnez à votre rythme</span> — Finalisez quand vous êtes prêt, sans crédit ni engagement</p>
               </div>
             </div>
           </div>
@@ -358,6 +404,9 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
                   required
                 />
               </div>
+              {error && !clientSecret && (
+                <p className="text-error text-sm">{error}</p>
+              )}
               <Button
                 variant="accent"
                 size="lg"
@@ -366,7 +415,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
                 loading={paymentLoading}
                 disabled={!email}
               >
-                Procéder au paiement
+                Proceder au paiement
               </Button>
             </div>
           )}
@@ -393,10 +442,28 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
           )}
         </div>
 
+        {/* Refund policy */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mt-4">
+          <p className="text-xs text-amber-800">
+            <strong>Politique d&apos;annulation :</strong> Les frais de reservation ({(MOETLY_CONFIG.PRIME_RATE * 100).toFixed(0)}%) ne sont pas remboursables.
+            Vos versements d&apos;epargne sont retirables a tout moment depuis votre espace personnel.
+          </p>
+        </div>
+
         {/* Footer trust badges */}
         <div className="mt-6 text-center text-xs text-gray-400 space-y-1">
-          <p>Paiement sécurisé via Stripe</p>
-          <p>Moetly Pay — Bloquez le prix, payez plus tard</p>
+          <p>Paiement securise via Stripe</p>
+          <p>Moetly Pay — Bloquez le prix, epargnez a votre rythme</p>
+        </div>
+
+        {/* Account creation banner */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-400">
+            <a href="/compte" className="text-blue-primary hover:underline">
+              Creez votre compte Moetly Pay
+            </a>{' '}
+            pour suivre toutes vos reservations en un seul endroit.
+          </p>
         </div>
       </div>
     </div>

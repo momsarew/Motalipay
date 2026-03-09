@@ -9,7 +9,7 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import CountdownTimer from '@/components/ui/CountdownTimer';
 import Button from '@/components/ui/Button';
 import PaymentModal from '@/components/consumer/PaymentModal';
-import { Plane, ArrowLeft, CreditCard, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plane, ArrowLeft, CreditCard, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 function PaiementHistoryItem({ paiement }: { paiement: Paiement }) {
@@ -74,34 +74,34 @@ function ReservationCard({
   const allPaiements = res.paiements || [];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
       {/* En-tête */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-sm text-gray-400 font-mono">{shortId(res.id)}</span>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
+            <span className="text-xs sm:text-sm text-gray-400 font-mono">{shortId(res.id)}</span>
             <Badge variant={statutToVariant(res.statut)}>
               {statutLabel(res.statut)}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
+            <span className="text-lg sm:text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
               {trajetLabel}
             </span>
           </div>
           {(volDate || compagnie) && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               {volDate && <>Vol le {formatDate(volDate)}</>}
               {volDate && compagnie && <> &middot; </>}
               {compagnie}
             </p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
+        <div className="sm:text-right flex items-center sm:block gap-2">
+          <p className="text-xl sm:text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
             {formatCurrency(res.prix_bloque)}
           </p>
-          <p className="text-sm text-gray-500">Prix bloqué</p>
+          <p className="text-xs sm:text-sm text-gray-500">Prix bloqué</p>
         </div>
       </div>
 
@@ -112,11 +112,11 @@ function ReservationCard({
 
       {/* Réservation active — Actions de paiement */}
       {res.statut === 'active' && !estFinalisee && (
-        <div className="mt-4 bg-blue-light/50 border border-blue-primary/15 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="mt-4 bg-blue-light/50 border border-blue-primary/15 rounded-xl p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
             <CountdownTimer targetDate={res.date_expiration} compact />
-            <span className="text-sm font-semibold text-gray-700">
-              Reste : {formatCurrency(reste)}
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">
+              Reste à verser : {formatCurrency(reste)}
             </span>
           </div>
           <Button
@@ -127,18 +127,18 @@ function ReservationCard({
           >
             <span className="flex items-center justify-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Payer maintenant
+              Verser maintenant
             </span>
           </Button>
           <div className="flex gap-2 mt-3">
             <a
-              href={`mailto:?subject=${encodeURIComponent(`Finalisation réservation ${shortId(res.id)}`)}&body=${encodeURIComponent(`Bonjour,\n\nJe souhaite finaliser ma réservation ${shortId(res.id)} pour le trajet ${trajetLabel}.\n\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nDéjà payé : ${formatCurrency(totalPaye)}\nReste à payer : ${formatCurrency(reste)}\n\nMerci.`)}`}
+              href={`mailto:?subject=${encodeURIComponent(`Finalisation réservation ${shortId(res.id)}`)}&body=${encodeURIComponent(`Bonjour,\n\nJe souhaite finaliser ma réservation ${shortId(res.id)} pour le trajet ${trajetLabel}.\n\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nDéjà payé : ${formatCurrency(totalPaye)}\nReste à verser : ${formatCurrency(reste)}\n\nMerci.`)}`}
               className="flex-1 text-center text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Contacter par email
             </a>
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(`Bonjour, je souhaite finaliser ma réservation ${shortId(res.id)} pour ${trajetLabel}.\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nReste à payer : ${formatCurrency(reste)}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Bonjour, je souhaite finaliser ma réservation ${shortId(res.id)} pour ${trajetLabel}.\nPrix bloqué : ${formatCurrency(res.prix_bloque)}\nReste à verser : ${formatCurrency(reste)}`)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 text-center text-xs bg-[#25D366]/10 text-[#25D366] px-3 py-2 rounded-lg hover:bg-[#25D366]/20 transition-colors font-medium"
@@ -155,11 +155,11 @@ function ReservationCard({
           <div className="flex items-center justify-center gap-2 mb-1">
             <CheckCircle className="w-5 h-5 text-success" />
             <span className="text-success font-[family-name:var(--font-sora)] font-bold">
-              Paiement complet
+              Billet finalisé
             </span>
           </div>
           <p className="text-sm text-gray-500">
-            Votre billet est entièrement payé. Contactez votre vendeur pour la remise.
+            Votre épargne est complète. Le marchand procède à l&apos;émission de votre billet.
           </p>
         </div>
       )}
@@ -172,7 +172,7 @@ function ReservationCard({
             className="flex items-center gap-2 text-sm text-blue-primary font-medium hover:text-blue-dark transition-colors cursor-pointer"
           >
             {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            {paiementsConfirmes.length} paiement{paiementsConfirmes.length > 1 ? 's' : ''} effectué{paiementsConfirmes.length > 1 ? 's' : ''}
+            {paiementsConfirmes.length} versement{paiementsConfirmes.length > 1 ? 's' : ''} effectué{paiementsConfirmes.length > 1 ? 's' : ''}
           </button>
 
           {showHistory && (
@@ -194,12 +194,41 @@ function ReservationCard({
 function DashboardContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
+  const token = searchParams.get('token');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingReservation, setPayingReservation] = useState<Reservation | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const validateToken = useCallback(async (emailAddr: string, tkn: string) => {
+    try {
+      const res = await fetch('/api/auth/consumer-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailAddr }),
+      });
+      const data = await res.json();
+      return data.token === tkn;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (email && token) {
+      validateToken(email, token).then(valid => {
+        setAuthenticated(valid);
+        if (!valid) setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [email, token, validateToken]);
 
   const fetchReservations = useCallback(() => {
-    if (!email) {
+    if (!email || !authenticated) {
       setLoading(false);
       return;
     }
@@ -211,24 +240,79 @@ function DashboardContent() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [email]);
+  }, [email, authenticated]);
 
   useEffect(() => {
-    fetchReservations();
-  }, [fetchReservations]);
+    if (authenticated) {
+      fetchReservations();
+    }
+  }, [authenticated, fetchReservations]);
 
   const handlePaymentComplete = () => {
     setPayingReservation(null);
-    // Recharger les données pour refléter le nouveau paiement
     setLoading(true);
     fetchReservations();
   };
 
-  if (!email) {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput) return;
+    setAuthLoading(true);
+    try {
+      const res = await fetch('/api/auth/consumer-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        window.location.href = `/dashboard?email=${encodeURIComponent(emailInput)}&token=${data.token}`;
+      }
+    } catch {
+      setAuthLoading(false);
+    }
+  };
+
+  if (!email || !token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full">
+          <h2 className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-2 text-center">
+            Acceder a mes reservations
+          </h2>
+          <p className="text-sm text-gray-500 mb-6 text-center">
+            Entrez votre email pour consulter vos reservations.
+          </p>
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <input
+              type="email"
+              value={emailInput}
+              onChange={e => setEmailInput(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none transition-all"
+              placeholder="votre@email.com"
+              required
+            />
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-blue-primary text-white py-3 rounded-xl font-semibold hover:bg-blue-dark transition-colors disabled:opacity-50"
+            >
+              {authLoading ? 'Chargement...' : 'Voir mes reservations'}
+            </button>
+          </form>
+        </div>
+        <Link href="/" className="text-blue-primary hover:underline text-sm">
+          Retour a l&apos;accueil
+        </Link>
+      </div>
+    );
+  }
+
+  if (!authenticated && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-500">Aucun email spécifié</p>
-        <Link href="/" className="text-blue-primary hover:underline">Retour aux vols</Link>
+        <p className="text-gray-500">Token invalide ou expire</p>
+        <Link href="/dashboard" className="text-blue-primary hover:underline">Reessayer</Link>
       </div>
     );
   }
@@ -262,9 +346,24 @@ function DashboardContent() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <h1 className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-6">
+        {/* Account creation banner */}
+        <div className="bg-blue-light border border-blue-primary/20 rounded-xl p-4 mb-6">
+          <p className="text-sm text-blue-dark">
+            <strong>Nouveau !</strong> Creez votre compte Moetly Pay pour retrouver
+            toutes vos reservations en un seul endroit, quel que soit le marchand.{' '}
+            <a href="/compte" className="font-semibold text-blue-primary hover:underline">
+              Creer mon compte &rarr;
+            </a>
+          </p>
+        </div>
+
+        <h1 className="text-2xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-2">
           Mes réservations
         </h1>
+        <p className="text-sm text-gray-500 mb-6 flex items-center gap-1.5">
+          <Shield className="w-4 h-4 text-blue-primary" />
+          Vos fonds sont sécurisés chez Moetly Pay. Vous pouvez retirer vos versements à tout moment (hors prime).
+        </p>
 
         {/* Mini KPIs */}
         {!loading && reservations.length > 0 && (
@@ -283,7 +382,7 @@ function DashboardContent() {
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
               <p className="text-lg font-bold text-gray-900">{formatCurrency(totalPaye)}</p>
-              <p className="text-xs text-gray-500">sur {formatCurrency(totalBloque)}</p>
+              <p className="text-xs text-gray-500">épargné sur {formatCurrency(totalBloque)}</p>
             </div>
           </div>
         )}

@@ -69,9 +69,11 @@ function StripePaymentForm({
       >
         Confirmer le paiement
       </Button>
-      <p className="text-xs text-gray-400 text-center mt-2">
-        Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
-      </p>
+      {process.env.NODE_ENV === 'development' && (
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
+        </p>
+      )}
     </form>
   );
 }

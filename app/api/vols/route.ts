@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Vols GET error:', error.message);
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 
   return NextResponse.json(data);

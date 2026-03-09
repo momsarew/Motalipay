@@ -53,9 +53,11 @@ function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; re
       >
         Confirmer le paiement
       </Button>
-      <p className="text-xs text-gray-400 text-center mt-3">
-        Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
-      </p>
+      {process.env.NODE_ENV === 'development' && (
+        <p className="text-xs text-gray-400 text-center mt-3">
+          Mode test — Carte : 4242 4242 4242 4242 | Exp : 12/34 | CVC : 123
+        </p>
+      )}
     </form>
   );
 }
@@ -165,18 +167,18 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.origine}</p>
-              <p className="text-white/70 text-sm mt-1">{vol.ville_origine}</p>
+            <div className="text-center min-w-0 flex-1">
+              <p className="text-2xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.origine}</p>
+              <p className="text-white/70 text-xs sm:text-sm mt-1 truncate">{vol.ville_origine}</p>
             </div>
-            <div className="flex items-center gap-2 px-4">
-              <div className="w-12 h-[2px] bg-white/30" />
-              <Plane className="w-5 h-5 text-yellow-accent" />
-              <div className="w-12 h-[2px] bg-white/30" />
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 flex-shrink-0">
+              <div className="w-6 sm:w-12 h-[2px] bg-white/30" />
+              <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-accent" />
+              <div className="w-6 sm:w-12 h-[2px] bg-white/30" />
             </div>
-            <div className="text-center">
-              <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.destination}</p>
-              <p className="text-white/70 text-sm mt-1">{vol.ville_destination}</p>
+            <div className="text-center min-w-0 flex-1">
+              <p className="text-2xl sm:text-4xl font-[family-name:var(--font-sora)] font-bold">{vol.destination}</p>
+              <p className="text-white/70 text-xs sm:text-sm mt-1 truncate">{vol.ville_destination}</p>
             </div>
           </div>
 
@@ -185,7 +187,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               <Calendar className="w-4 h-4" />
               {formatDate(vol.date_vol)}
             </div>
-            <p className="text-3xl font-[family-name:var(--font-sora)] font-bold">
+            <p className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold">
               {formatCurrency(vol.prix_actuel)}
             </p>
           </div>
@@ -203,12 +205,12 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
           </h2>
 
           {/* Duration selector */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {MOETLY_CONFIG.DURATIONS.map(d => (
               <button
                 key={d.days}
                 onClick={() => setDuree(d.days)}
-                className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   duree === d.days
                     ? 'bg-blue-primary text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -216,7 +218,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
               >
                 {d.label}
                 {'recommended' in d && d.recommended && (
-                  <span className="block text-[10px] font-normal mt-0.5 opacity-80">RECOMMANDÉ</span>
+                  <span className="hidden sm:block text-[10px] font-normal mt-0.5 opacity-80">RECOMMANDÉ</span>
                 )}
               </button>
             ))}
@@ -234,7 +236,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="border-t border-gray-200 pt-3">
               <div className="flex justify-between text-lg font-[family-name:var(--font-sora)] font-bold text-blue-primary">
-                <span>Vous payez MAINTENANT</span>
+                <span>A regler aujourd&apos;hui</span>
                 <span>{formatCurrency(prime.montant_prime)}</span>
               </div>
               <div className="flex justify-between text-sm text-gray-500 mt-1">

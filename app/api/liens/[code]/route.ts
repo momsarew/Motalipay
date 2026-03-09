@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { requireMarchandAuth } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -8,7 +9,7 @@ export async function GET(
   const { code } = await params;
   const supabase = createServiceClient();
 
-  // Récupérer le lien
+  // Recuperer le lien
   const { data, error } = await supabase
     .from('liens_paiement')
     .select('*')
@@ -16,10 +17,13 @@ export async function GET(
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Lien non trouvé' }, { status: 404 });
+    return NextResponse.json({ error: 'Lien non trouve' }, { status: 404 });
   }
 
-  // Incrémenter le compteur de vues
+  // Incrementer le compteur de vues
+  // NOTE: Known limitation - race condition on concurrent views.
+  // For production, use a Supabase RPC with atomic increment:
+  // e.g. supabase.rpc('increment_views', { lien_id: data.id })
   await supabase
     .from('liens_paiement')
     .update({ nb_vues: (data.nb_vues || 0) + 1 })
@@ -32,10 +36,25 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  // Require merchant auth for PATCH
+  const auth = await requireMarchandAuth();
+  if (auth.error) return auth.error;
+
   const { code } = await params;
-  const body = await req.json();
   const supabase = createServiceClient();
 
+  // Verify the lien belongs to the authenticated merchant
+  const { data: existingLien } = await supabase
+    .from('liens_paiement')
+    .select('marchand_id')
+    .eq('short_code', code)
+    .single();
+
+  if (!existingLien || existingLien.marchand_id !== auth.marchand_id) {
+    return NextResponse.json({ error: 'Lien non trouve ou non autorise' }, { status: 404 });
+  }
+
+  const body = await req.json();
   const allowedFields = ['actif'];
   const updates: Record<string, unknown> = {};
 
@@ -53,7 +72,8 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Lien PATCH error:', error.message);
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
   }
 
   return NextResponse.json(data);
