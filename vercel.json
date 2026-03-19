@@ -1,0 +1,10 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/expire-reservations",
+      "schedule": "0 2 * * *",
+      "method": "POST"
+    }
+  ]
+}
+
