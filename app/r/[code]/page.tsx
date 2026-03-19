@@ -1,16 +1,37 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { LienPaiement } from '@/types';
+import { LienPaiement, Reservation } from '@/types';
 import { formatCurrency, formatDate, calculatePrime } from '@/lib/utils';
 import { MOETLY_CONFIG, SECTEURS, Secteur } from '@/lib/constants';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/skeleton';
-import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle, Music, Building, Package } from 'lucide-react';
+import ProgressBar from '@/components/ui/ProgressBar';
+import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle, Music, Building, Package, Ticket } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useSearchParams } from 'next/navigation';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+interface TimeLeft {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+}
+
+function getTimeLeft(targetDate: Date): TimeLeft {
+  const diff = targetDate.getTime() - Date.now();
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  };
+}
 
 function PaymentForm({ reservationId }: { reservationId: string }) {
   const stripe = useStripe();
@@ -62,7 +83,9 @@ function PaymentForm({ reservationId }: { reservationId: string }) {
 
 export default function PaymentLinkPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
+  const searchParams = useSearchParams();
   const [lien, setLien] = useState<LienPaiement | null>(null);
+  const [existingReservation, setExistingReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [duree, setDuree] = useState(60);
@@ -72,6 +95,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
   const [clientSecret, setClientSecret] = useState('');
   const [reservationId, setReservationId] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
     fetch(`/api/liens/${code}`)
@@ -88,6 +112,20 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
         setLoading(false);
       });
   }, [code]);
+
+  useEffect(() => {
+    const initialReservationId = searchParams.get('reservation_id');
+    if (!initialReservationId) return;
+
+    fetch(`/api/reservations/${initialReservationId}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!data || data.error) return;
+        setExistingReservation(data as Reservation);
+        setReservationId(initialReservationId);
+      })
+      .catch(() => {});
+  }, [searchParams]);
 
   if (loading) {
     return (
@@ -164,6 +202,16 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
   const prime = calculatePrime(prix, effectiveRate);
   const expirationDate = new Date();
   expirationDate.setDate(expirationDate.getDate() + duree);
+  const isUrgent = expirationDate.getTime() - Date.now() < 24 * 60 * 60 * 1000;
+
+  useEffect(() => {
+    setTimeLeft(getTimeLeft(expirationDate));
+    const timer = setInterval(() => setTimeLeft(getTimeLeft(expirationDate)), 1000);
+    return () => clearInterval(timer);
+  }, [duree]);
+
+  const totalPaid = existingReservation?.total_paye || 0;
+  const hasPartialProgress = totalPaid > 0 && totalPaid < prix;
 
   const handleReserve = async () => {
     if (!email) return;
@@ -218,11 +266,88 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
       </header>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        {/* Bloc conversion: prix bloqué + durée */}
+        <div className="mb-4 rounded-2xl border border-blue-primary/25 bg-blue-primary p-4 text-white shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-white/80">Prix bloqué</p>
+          <div className="mt-1 flex items-end justify-between gap-3">
+            <p className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-extrabold leading-none">
+              {formatCurrency(prix)}
+            </p>
+            <span className="rounded-full bg-yellow-accent px-3 py-1 text-xs font-bold text-gray-900">
+              Durée: {duree} jours
+            </span>
+          </div>
+        </div>
+
+        {/* Countdown visuel J/H/M/S */}
+        <div className={`mb-4 rounded-2xl border p-4 ${isUrgent ? 'border-red-200 bg-red-50' : 'border-blue-primary/20 bg-white'}`}>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${isUrgent ? 'text-red-600' : 'text-blue-primary'}`}>
+            Temps restant pour bloquer cette offre
+          </p>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {[
+              { label: 'Jours', value: timeLeft.days },
+              { label: 'Heures', value: timeLeft.hours },
+              { label: 'Min', value: timeLeft.minutes },
+              { label: 'Sec', value: timeLeft.seconds },
+            ].map(item => (
+              <div key={item.label} className={`rounded-xl border px-2 py-3 text-center ${isUrgent ? 'border-red-200 bg-white' : 'border-blue-primary/15 bg-blue-light/50'}`}>
+                <p className={`text-xl font-[family-name:var(--font-sora)] font-bold ${isUrgent ? 'text-red-600' : 'text-blue-primary'}`}>
+                  {String(item.value).padStart(2, '0')}
+                </p>
+                <p className="text-[11px] text-gray-500">{item.label}</p>
+              </div>
+            ))}
+          </div>
+          {isUrgent && <p className="mt-2 text-xs font-medium text-red-600">Dernières 24h — finalisez maintenant.</p>}
+        </div>
+
         {/* Merchant name */}
         {lien.compagnie && (
           <div className="mb-4 text-center">
             <p className="text-sm text-gray-500">Vendu par</p>
             <p className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">{lien.compagnie}</p>
+          </div>
+        )}
+
+        {/* Récap offre mobile-first */}
+        <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Ticket className="h-4 w-4 text-blue-primary" />
+            <p className="text-sm font-semibold text-gray-900">Récapitulatif</p>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-gray-500">Trajet</span>
+              <span className="text-right font-medium text-gray-900">{lien.ville_origine} → {lien.ville_destination}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-gray-500">Compagnie</span>
+              <span className="text-right font-medium text-gray-900">{lien.compagnie || 'Non précisée'}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-gray-500">Date vol</span>
+              <span className="text-right font-medium text-gray-900">{lien.date_vol ? formatDate(lien.date_vol) : 'À confirmer'}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-gray-500">Référence</span>
+              <span className="text-right font-medium text-gray-900">{lien.reference_billet || `LIEN-${lien.short_code.toUpperCase()}`}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progression épargne si paiements partiels existants */}
+        {hasPartialProgress && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-sm font-semibold text-emerald-700">Progression de votre épargne</p>
+            <p className="mt-1 text-xs text-emerald-700/80">
+              {formatCurrency(totalPaid)} déjà versés ({Math.round((totalPaid / prix) * 100)}%)
+            </p>
+            <ProgressBar
+              className="mt-3"
+              current={totalPaid}
+              total={prix}
+            />
           </div>
         )}
 
@@ -438,7 +563,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
                 className="w-full"
                 onClick={handleReserve}
                 loading={paymentLoading}
-                disabled={!email}
+                disabled={!email || paymentLoading}
               >
                 Proceder au paiement
               </Button>
