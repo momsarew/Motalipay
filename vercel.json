@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/expire-reservations",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/remind-expiration",
+      "schedule": "0 9 * * *"
     }
   ]
 }

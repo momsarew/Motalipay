@@ -1,5 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { createServiceClient } from '@/lib/supabase/server';
+import { sendFinalizationEmail, sendPrimePaidEmail } from '@/lib/email';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -39,6 +40,8 @@ export async function POST(req: Request) {
       .single();
 
     if (paiement) {
+      const shouldSendPrimeEmail = paiement.type === 'prime' && paiement.statut !== 'confirme';
+
       // 2. Marquer le paiement comme confirmé
       await supabase
         .from('paiements')
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
       // 4. Récupérer la réservation pour vérifier si tout est payé
       const { data: reservation } = await supabase
         .from('reservations')
-        .select('prix_bloque')
+        .select('id, consommateur_email, consommateur_prenom, prix_bloque, montant_prime, duree_jours, date_expiration, statut, vol:vols(*), lien_paiement:liens_paiement(*)')
         .eq('id', paiement.reservation_id)
         .single();
 
@@ -78,7 +81,11 @@ export async function POST(req: Request) {
       }
 
       // 6. Auto-finalisation si tout est payé
-      if (reservation && newTotal >= parseFloat(String(reservation.prix_bloque))) {
+      const prixBloque = reservation ? parseFloat(String(reservation.prix_bloque)) : null;
+      const shouldSendFinalizationEmail =
+        reservation && reservation.statut !== 'finalisee' && prixBloque !== null && newTotal >= prixBloque;
+
+      if (shouldSendFinalizationEmail) {
         updateData.statut = 'finalisee';
       }
 
@@ -86,6 +93,33 @@ export async function POST(req: Request) {
         .from('reservations')
         .update(updateData)
         .eq('id', paiement.reservation_id);
+
+      // 7. Emails transactionnels (sans bloquer la réussite du webhook)
+      if (shouldSendPrimeEmail && reservation) {
+        try {
+          await sendPrimePaidEmail({
+            to: reservation.consommateur_email,
+            prenom: reservation.consommateur_prenom,
+            reservation: reservation,
+            paymentIntentId: paymentIntent.id,
+          });
+        } catch {
+          console.error('[Moetly] Failed to send prime paid email');
+        }
+      }
+
+      if (shouldSendFinalizationEmail && reservation) {
+        try {
+          await sendFinalizationEmail({
+            to: reservation.consommateur_email,
+            prenom: reservation.consommateur_prenom,
+            reservation: reservation,
+            totalPaid: newTotal,
+          });
+        } catch {
+          console.error('[Moetly] Failed to send finalization email');
+        }
+      }
 
       console.log('[Moetly] Payment confirmed');
     } else {
