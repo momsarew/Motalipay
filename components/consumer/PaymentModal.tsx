@@ -65,7 +65,7 @@ function StripePaymentForm({
         size="lg"
         className="w-full mt-4"
         loading={processing}
-        disabled={!stripe}
+        disabled={!stripe || !elements || processing}
       >
         Confirmer le paiement
       </Button>

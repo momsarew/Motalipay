@@ -9,16 +9,14 @@ import { ArrowLeft, Plane, Shield, CreditCard, Calendar, TrendingUp, Lock } from
 import Link from 'next/link';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { useRouter } from 'next/navigation';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; reservationId: string }) {
+function PaymentForm({ reservationId }: { reservationId: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +47,7 @@ function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; re
         size="lg"
         className="w-full mt-6"
         loading={processing}
-        disabled={!stripe}
+        disabled={!stripe || !elements || processing}
       >
         Confirmer le paiement
       </Button>
@@ -330,7 +328,7 @@ export default function FlightDetailPage({ params }: { params: Promise<{ id: str
                 },
               }}
             >
-              <PaymentForm clientSecret={clientSecret} reservationId={reservationId} />
+              <PaymentForm reservationId={reservationId} />
             </Elements>
           )}
         </div>

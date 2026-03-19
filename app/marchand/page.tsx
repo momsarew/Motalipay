@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Reservation, Paiement } from '@/types';
 import { formatCurrency, formatDateShort, shortId, daysRemaining, resteAPayer, progressionPaiement } from '@/lib/utils';
 import Card from '@/components/ui/Card';
+import Skeleton from '@/components/ui/skeleton';
 import Badge, { statutToVariant, statutLabel } from '@/components/ui/Badge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { TrendingUp, Shield, DollarSign, Target, Clock, CreditCard, CheckCircle, ArrowUpRight, AlertTriangle, Package, BarChart3 } from 'lucide-react';
@@ -50,10 +51,50 @@ export default function MarchandDashboardPage() {
   if (loading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
+        <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-52" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+
+          {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-gray-200 rounded-2xl" />)}
+            {[1, 2, 3, 4].map(i => (
+              <div key={`kpi-${i}`} className="rounded-2xl border border-gray-100 bg-white p-5">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-3">
+                    <Skeleton className="h-3.5 w-24" />
+                    <Skeleton className="h-7 w-20" />
+                  </div>
+                  <Skeleton className="h-10 w-10 rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Main blocks */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 space-y-3">
+              <Skeleton className="h-5 w-44" />
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-28 w-full" />
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 space-y-3">
+              <Skeleton className="h-5 w-44" />
+              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-28 w-full" />
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={`row-${i}`} className="h-10 w-full rounded-lg" />
+            ))}
           </div>
         </div>
       </div>

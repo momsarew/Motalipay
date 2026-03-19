@@ -5,19 +5,18 @@ import { LienPaiement } from '@/types';
 import { formatCurrency, formatDate, calculatePrime } from '@/lib/utils';
 import { MOETLY_CONFIG, SECTEURS, Secteur } from '@/lib/constants';
 import Button from '@/components/ui/Button';
+import Skeleton from '@/components/ui/skeleton';
 import { Plane, Shield, CreditCard, Calendar, Lock, AlertCircle, Music, Building, Package } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { useRouter } from 'next/navigation';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; reservationId: string }) {
+function PaymentForm({ reservationId }: { reservationId: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +47,7 @@ function PaymentForm({ clientSecret, reservationId }: { clientSecret: string; re
         size="lg"
         className="w-full mt-6"
         loading={processing}
-        disabled={!stripe}
+        disabled={!stripe || !elements || processing}
       >
         Confirmer le paiement
       </Button>
@@ -92,8 +91,34 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Chargement...</div>
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+            <div className="w-7 h-7 bg-blue-primary rounded-lg flex items-center justify-center">
+              <Plane className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-[family-name:var(--font-sora)] font-bold text-gray-900">
+              Moetly<span className="text-yellow-accent">Pay</span>
+            </span>
+            <div className="ml-auto flex items-center gap-2 text-sm text-blue-primary">
+              <span className="w-2 h-2 rounded-full bg-yellow-accent animate-pulse" />
+              Chargement...
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+          <div className="rounded-2xl bg-white border border-gray-200 p-6 sm:p-8 space-y-5">
+            <Skeleton className="h-7 w-2/3" />
+            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-44 w-full rounded-2xl" />
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -437,7 +462,7 @@ export default function PaymentLinkPage({ params }: { params: Promise<{ code: st
                 },
               }}
             >
-              <PaymentForm clientSecret={clientSecret} reservationId={reservationId} />
+              <PaymentForm reservationId={reservationId} />
             </Elements>
           )}
         </div>
