@@ -16,10 +16,19 @@ const TABS = [
   { value: 'expiree', label: 'Expirées' },
 ];
 
+const SECTEUR_OPTIONS = [
+  { value: 'all', label: 'Tous secteurs' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'evenement', label: 'Événement' },
+  { value: 'hebergement', label: 'Hébergement' },
+  { value: 'autre', label: 'Autre' },
+];
+
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all');
+  const [secteur, setSecteur] = useState('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -67,12 +76,17 @@ export default function ReservationsPage() {
     loadReservations();
   }, [marchandId, tab, page]);
 
-  const filtered = search
-    ? reservations.filter(r =>
-        r.consommateur_email.toLowerCase().includes(search.toLowerCase()) ||
-        r.consommateur_prenom?.toLowerCase().includes(search.toLowerCase())
-      )
-    : reservations;
+  const filtered = reservations.filter(r => {
+    const matchesSearch =
+      !search ||
+      r.consommateur_email.toLowerCase().includes(search.toLowerCase()) ||
+      r.consommateur_prenom?.toLowerCase().includes(search.toLowerCase());
+
+    const reservationSecteur = r.lien_paiement?.secteur || 'transport';
+    const matchesSecteur = secteur === 'all' || reservationSecteur === secteur;
+
+    return matchesSearch && matchesSecteur;
+  });
 
   const handleMarkFinalized = async (id: string) => {
     await fetch(`/api/reservations/${id}`, {
@@ -87,8 +101,8 @@ export default function ReservationsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ['ID', 'Trajet', 'Prix bloqué', 'Total versé', 'Épargne client', 'Prime perçue', 'Statut', 'Date expiration', 'Email'];
-    const rows = reservations.map(r => {
+    const headers = ['ID', 'Trajet', 'Montant', 'Statut', 'Progression', 'Expiration', 'Email client'];
+    const rows = filtered.map(r => {
       const vol = r.vol;
       const lien = r.lien_paiement;
       const trajet = vol
@@ -102,10 +116,8 @@ export default function ReservationsPage() {
         shortId(r.id),
         trajet,
         r.prix_bloque.toFixed(2),
-        (r.total_paye || 0).toFixed(2),
-        `${Math.round(pct)}%`,
-        r.part_marchand.toFixed(2),
         r.statut,
+        `${Math.round(pct)}%`,
         formatDateShort(r.date_expiration),
         r.consommateur_email,
       ];
@@ -132,7 +144,7 @@ export default function ReservationsPage() {
         <Button variant="ghost" size="sm" onClick={exportCSV}>
           <span className="flex items-center gap-2">
             <Download className="w-4 h-4" />
-            Export CSV
+            Exporter CSV
           </span>
         </Button>
       </div>
@@ -154,15 +166,28 @@ export default function ReservationsPage() {
             </button>
           ))}
         </div>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par email..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none"
-          />
+        <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher par email..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none"
+            />
+          </div>
+          <select
+            value={secteur}
+            onChange={(e) => setSecteur(e.target.value)}
+            className="w-full sm:w-44 px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white focus:border-blue-primary focus:ring-2 focus:ring-blue-primary/20 outline-none"
+          >
+            {SECTEUR_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

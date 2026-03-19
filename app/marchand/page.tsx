@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Reservation, Paiement } from '@/types';
+import { Reservation } from '@/types';
 import { formatCurrency, formatDateShort, shortId, daysRemaining, resteAPayer, progressionPaiement } from '@/lib/utils';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/skeleton';
@@ -10,6 +10,7 @@ import Badge, { statutToVariant, statutLabel } from '@/components/ui/Badge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { TrendingUp, Shield, DollarSign, Target, Clock, CreditCard, CheckCircle, ArrowUpRight, AlertTriangle, Package, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function MarchandDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -178,6 +179,29 @@ export default function MarchandDashboardPage() {
     },
   ];
 
+  const finalizationTrend30d = Array.from({ length: 30 }, (_, i) => {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() - (29 - i));
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const dayReservations = reservations.filter(r => {
+      const created = new Date(r.created_at);
+      return created >= day && created < nextDay;
+    });
+
+    const dayCompleted = dayReservations.filter(r => ['finalisee', 'annulee', 'expiree'].includes(r.statut));
+    const dayFinalized = dayReservations.filter(r => r.statut === 'finalisee');
+    const rate = dayCompleted.length > 0 ? (dayFinalized.length / dayCompleted.length) * 100 : 0;
+
+    return {
+      label: `${String(day.getDate()).padStart(2, '0')}/${String(day.getMonth() + 1).padStart(2, '0')}`,
+      rate: Math.round(rate),
+      total: dayReservations.length,
+    };
+  });
+
   // Weekly chart data
   const weeklyData = Array.from({ length: 8 }, (_, i) => {
     const weekStart = new Date();
@@ -231,6 +255,48 @@ export default function MarchandDashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Tendance taux de finalisation */}
+      <Card padding="lg" className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-[family-name:var(--font-sora)] font-bold text-gray-900">
+              Taux de finalisation (30 jours)
+            </h2>
+            <p className="text-sm text-gray-500">
+              Évolution quotidienne des dossiers finalisés
+            </p>
+          </div>
+          <Target className="w-5 h-5 text-blue-primary" />
+        </div>
+        <div className="h-60 sm:h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={finalizationTrend30d} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6B7280' }} interval={4} />
+              <YAxis
+                domain={[0, 100]}
+                tickFormatter={(value) => `${value}%`}
+                tick={{ fontSize: 11, fill: '#6B7280' }}
+                width={38}
+              />
+              <Tooltip
+                formatter={(value) => [`${Number(value ?? 0)}%`, 'Taux']}
+                labelFormatter={(label) => `Jour: ${label}`}
+                contentStyle={{ borderRadius: '12px', borderColor: '#E5E7EB' }}
+              />
+              <Line
+                type="monotone"
+                dataKey="rate"
+                stroke="#1A6FC4"
+                strokeWidth={3}
+                dot={{ r: 2.5, fill: '#F5C842', stroke: '#1A6FC4', strokeWidth: 1 }}
+                activeDot={{ r: 5, fill: '#F5C842', stroke: '#1A6FC4', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       {/* ===== GESTION DES STOCKS ===== */}
       {(() => {
