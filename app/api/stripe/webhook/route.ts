@@ -7,16 +7,22 @@ export async function POST(req: Request) {
   const body = await req.text();
   const sig = req.headers.get('stripe-signature');
 
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
   if (!sig) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+  }
+
+  if (!webhookSecret) {
+    return NextResponse.json({ error: 'Missing webhook secret' }, { status: 500 });
   }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err);
+    console.error('Webhook signature verification failed');
     return NextResponse.json({ error: 'Webhook signature failed' }, { status: 400 });
   }
 
@@ -81,7 +87,7 @@ export async function POST(req: Request) {
         .update(updateData)
         .eq('id', paiement.reservation_id);
 
-      console.log(`[Moetly] Payment confirmed: ${paiement.type} ${paiement.montant}€ for reservation ${paiement.reservation_id} (total: ${Math.round(newTotal * 100) / 100}€)`);
+      console.log('[Moetly] Payment confirmed');
     } else {
       // Fallback : ancien système sans table paiements
       await supabase
@@ -93,7 +99,7 @@ export async function POST(req: Request) {
         })
         .eq('stripe_payment_intent_id', paymentIntent.id);
 
-      console.log(`[Moetly] Payment confirmed (legacy) for PI: ${paymentIntent.id}`);
+      console.log('[Moetly] Payment confirmed (legacy)');
     }
   }
 
@@ -108,7 +114,7 @@ export async function POST(req: Request) {
       })
       .eq('stripe_payment_intent_id', paymentIntent.id);
 
-    console.log(`[Moetly] Payment failed for PI: ${paymentIntent.id}`);
+    console.log('[Moetly] Payment failed');
   }
 
   return NextResponse.json({ received: true });
