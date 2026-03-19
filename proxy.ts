@@ -17,9 +17,6 @@ const buckets: Map<string, HitBucket> =
 globalThis.__moetlyRateLimitStripeCheckout = buckets;
 
 function getClientIp(req: NextRequest): string {
-  const direct = req.ip;
-  if (direct) return direct;
-
   const forwardedFor = req.headers.get('x-forwarded-for');
   if (!forwardedFor) return 'unknown';
 
@@ -27,7 +24,7 @@ function getClientIp(req: NextRequest): string {
   return forwardedFor.split(',')[0]?.trim() || 'unknown';
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const ip = getClientIp(req);
   const now = Date.now();
 
