@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Moetly Pay — Blocage de tarif et paiement flexible pour marchands",
-  description: "Convertissez plus, risquez moins. Vos clients bloquent le prix avec une prime et épargnent à leur rythme. Transport, événements, hébergement et plus.",
+  title: "Mottali — Blocage de tarif et paiement flexible pour marchands",
+  description:
+    "Mottali : bloquez le prix, sécurisez la vente. Prime, épargne flexible et paiements via Stripe — pour marchands exigeants.",
 };
 
 export default function RootLayout({

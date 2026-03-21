@@ -2,553 +2,398 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import {
-  Plane, Shield, Clock, CreditCard, Link2, BarChart3,
-  Zap, Send, Code, ArrowRight, CheckCircle,
-  Lock, TrendingUp, Music, Building, Package,
-  Menu, X,
+  ArrowRight,
+  CheckCircle,
+  CreditCard,
+  Link2,
+  Lock,
+  Menu,
+  Shield,
+  Sparkles,
+  TrendingUp,
+  X,
+  Zap,
 } from 'lucide-react';
 import { MOETLY_CONFIG } from '@/lib/constants';
-import { formatCurrency } from '@/lib/utils';
 
-// Calcul de l'exemple de tarification
-const EXEMPLE_PRIX = 680;
-const prime = Math.round(EXEMPLE_PRIX * MOETLY_CONFIG.PRIME_RATE * 100) / 100;
-const partMarchand = Math.round(prime * MOETLY_CONFIG.MARCHAND_SHARE * 100) / 100;
-const partMoetly = Math.round(prime * MOETLY_CONFIG.MOETLY_SHARE * 100) / 100;
+const fadeUp = {
+  initial: { opacity: 0, y: 28 },
+  whileInView: { opacity: 1, y: 0 },
+  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+  viewport: { once: true, margin: '-60px' },
+};
+
+const stagger = {
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
+  viewport: { once: true, margin: '-40px' },
+};
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-primary rounded-lg flex items-center justify-center">
-              <Plane className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900">
-              Moetly<span className="text-yellow-accent">Pay</span>
+    <div className="min-h-screen bg-[#0A0A0A] text-zinc-100 antialiased">
+      {/* Nav fixe */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0A0A0A]/85 backdrop-blur-xl supports-[backdrop-filter]:bg-[#0A0A0A]/70">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+              <span className="font-[family-name:var(--font-sora)] text-lg font-bold tracking-tight text-yellow-accent">
+                M
+              </span>
             </span>
-          </div>
-          <nav className="hidden sm:flex items-center gap-8">
-            <a href="#comment-ca-marche" className="text-sm text-gray-500 hover:text-blue-primary transition-colors">
+            <span className="font-[family-name:var(--font-sora)] text-lg font-bold tracking-tight text-white">
+              Mottali
+            </span>
+          </Link>
+
+          <nav className="hidden items-center gap-10 md:flex">
+            <a
+              href="#comment-ca-marche"
+              className="text-sm text-zinc-400 transition-colors hover:text-white"
+            >
               Comment ça marche
             </a>
-            <a href="#avantages" className="text-sm text-gray-500 hover:text-blue-primary transition-colors">
+            <a href="#avantages" className="text-sm text-zinc-400 transition-colors hover:text-white">
               Avantages
             </a>
-            <a href="#tarifs" className="text-sm text-gray-500 hover:text-blue-primary transition-colors">
-              Tarifs
+            <a href="#chiffres" className="text-sm text-zinc-400 transition-colors hover:text-white">
+              Chiffres
             </a>
-            <Link
-              href="/compte"
-              className="text-sm text-gray-500 hover:text-blue-primary transition-colors"
-            >
+            <Link href="/compte" className="text-sm text-zinc-400 transition-colors hover:text-white">
               Espace client
             </Link>
             <Link
               href="/marchand/login"
-              className="text-sm font-semibold text-blue-primary border border-blue-primary px-4 py-2 rounded-xl hover:bg-blue-light transition-all"
+              className="rounded-xl bg-yellow-accent px-5 py-2.5 text-sm font-semibold text-zinc-900 transition-colors hover:bg-[#e8c23a]"
             >
               Espace Marchand
             </Link>
           </nav>
-          {/* Mobile: hamburger */}
+
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all cursor-pointer"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-zinc-300 transition-colors hover:bg-white/5 md:hidden"
             aria-label="Menu"
+            aria-expanded={mobileMenuOpen}
           >
-            {mobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
-        {/* Mobile nav dropdown */}
+
         {mobileMenuOpen && (
-          <div className="sm:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
-            <a href="#comment-ca-marche" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
-              Comment ça marche
-            </a>
-            <a href="#avantages" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
-              Avantages
-            </a>
-            <a href="#tarifs" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
-              Tarifs
-            </a>
-            <Link href="/compte" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gray-600 hover:text-blue-primary py-2">
-              Espace client
-            </Link>
-            <Link
-              href="/marchand/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-center text-sm font-semibold text-white bg-blue-primary px-4 py-3 rounded-xl hover:bg-blue-dark transition-all"
-            >
-              Espace Marchand
-            </Link>
+          <div className="border-t border-white/[0.06] bg-[#0F0F0F] px-4 py-5 md:hidden">
+            <div className="flex flex-col gap-1">
+              <a
+                href="#comment-ca-marche"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-3 py-3 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Comment ça marche
+              </a>
+              <a
+                href="#avantages"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-3 py-3 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Avantages
+              </a>
+              <a
+                href="#chiffres"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-3 py-3 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Chiffres
+              </a>
+              <Link
+                href="/compte"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl px-3 py-3 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Espace client
+              </Link>
+              <Link
+                href="/marchand/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="mt-2 rounded-xl bg-yellow-accent py-3 text-center text-sm font-semibold text-zinc-900"
+              >
+                Espace Marchand
+              </Link>
+            </div>
           </div>
         )}
       </header>
 
-      {/* ===== HERO ===== */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-dark via-blue-primary to-blue-dark" />
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)',
-          backgroundSize: '50px 50px',
-        }} />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-[family-name:var(--font-sora)] font-extrabold text-white leading-tight">
-            Convertissez plus,
-            <br />
-            <span className="text-yellow-accent">risquez moins.</span>
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto">
-            Vos clients bloquent le tarif avec une prime et épargnent à leur rythme.
-            S&apos;ils finalisent, vous vendez. S&apos;ils abandonnent, vous gardez la prime
-            et revendez le produit.
-          </p>
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden pt-28 pb-20 sm:pt-32 sm:pb-28 lg:pt-40 lg:pb-32">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-1/4 top-0 h-[500px] w-[500px] rounded-full bg-blue-primary/[0.07] blur-3xl" />
+            <div className="absolute -right-1/4 bottom-0 h-[400px] w-[400px] rounded-full bg-yellow-accent/[0.04] blur-3xl" />
+          </div>
 
-          {/* CTAs */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/marchand/login"
-              className="bg-yellow-accent text-gray-900 px-8 py-4 rounded-xl text-lg font-[family-name:var(--font-sora)] font-semibold hover:bg-yellow-dark transition-all shadow-lg flex items-center gap-2"
+          <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] as const }}
+              className="text-center"
             >
-              Créer mon compte marchand
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/marchand/login"
-              className="text-white border border-white/30 px-8 py-4 rounded-xl text-lg font-[family-name:var(--font-sora)] font-semibold hover:bg-white/10 transition-all"
-            >
-              Voir la démo
-            </Link>
-          </div>
-
-          {/* Value props */}
-          <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
-            {[
-              { icon: Zap, text: 'Prêt en 30 secondes' },
-              { icon: CreditCard, text: 'Prime de 5% non remboursable' },
-              { icon: Shield, text: 'Paiements via Stripe' },
-            ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2 text-white/90">
-                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-yellow-accent" />
-                </div>
-                <span className="font-medium">{text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== BANDEAU CONFIANCE ===== */}
-      <section className="bg-white border-b border-gray-200 py-5">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-sm text-gray-500">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-blue-primary" />
-            <span>Paiements sécurisés par <strong className="text-gray-700">Stripe</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-blue-primary" />
-            <span>Fonds sécurisés chez <strong className="text-gray-700">Moetly Pay</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-success" />
-            <span>Mode test disponible</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== COMMENT ÇA MARCHE ===== */}
-      <section id="comment-ca-marche" className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
-        <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
-          Comment ça marche ?
-        </h2>
-        <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-          En 3 étapes simples, proposez le blocage de tarif à vos clients
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          {[
-            {
-              step: '1',
-              icon: Link2,
-              title: 'Créez un lien de paiement',
-              desc: 'Renseignez le trajet et le prix du billet. En 30 secondes, votre lien est prêt à envoyer.',
-            },
-            {
-              step: '2',
-              icon: Send,
-              title: 'Envoyez-le au client',
-              desc: 'Partagez le lien par WhatsApp, email ou SMS. Le client voit le prix et peut payer sa prime.',
-            },
-            {
-              step: '3',
-              icon: CreditCard,
-              title: 'Suivez les paiements',
-              desc: 'Le client verse la prime puis épargne à son rythme. Suivez chaque versement et votre pipeline depuis le dashboard.',
-            },
-          ].map(({ step, icon: Icon, title, desc }) => (
-            <div key={step} className="text-center">
-              <div className="w-16 h-16 bg-blue-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 relative">
-                <span className="text-2xl font-[family-name:var(--font-sora)] font-bold">{step}</span>
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-accent rounded-lg flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-gray-900" />
-                </div>
-              </div>
-              <h3 className="text-lg font-[family-name:var(--font-sora)] font-semibold text-gray-900">{title}</h3>
-              <p className="mt-2 text-gray-500 text-sm leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== AVANTAGES ===== */}
-      <section id="avantages" className="bg-white py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
-            Pourquoi les marchands choisissent Moetly Pay
-          </h2>
-          <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-            Tout ce qu&apos;il faut pour convertir plus de clients et suivre vos ventes
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: Zap,
-                color: 'text-blue-primary',
-                bg: 'bg-blue-light',
-                title: 'Prêt en 30 secondes',
-                desc: 'Créez des liens de paiement sans une ligne de code. Envoyez-les par WhatsApp ou email à vos clients.',
-              },
-              {
-                icon: BarChart3,
-                color: 'text-blue-primary',
-                bg: 'bg-blue-light',
-                title: 'Dashboard temps réel',
-                desc: 'Suivez vos réservations actives, l\u2019épargne de vos clients, vos primes acquises et le taux de finalisation.',
-              },
-              {
-                icon: Shield,
-                color: 'text-success',
-                bg: 'bg-emerald-50',
-                title: 'Paiements via Stripe',
-                desc: 'Chaque transaction est traitée par Stripe. PCI-DSS compliant, sans effort de votre part.',
-              },
-              {
-                icon: Clock,
-                color: 'text-yellow-dark',
-                bg: 'bg-yellow-light',
-                title: 'Épargne flexible',
-                desc: 'Vos clients versent la prime puis épargnent à leur rythme chez Moetly Pay. Les fonds leur restent accessibles à tout moment.',
-              },
-              {
-                icon: Code,
-                color: 'text-blue-primary',
-                bg: 'bg-blue-light',
-                title: 'API pour automatiser',
-                desc: 'Marchands techniques : intégrez Moetly Pay à votre site avec notre widget et nos webhooks.',
-              },
-              {
-                icon: TrendingUp,
-                color: 'text-success',
-                bg: 'bg-emerald-50',
-                title: 'Gagnez dans tous les cas',
-                desc: 'Si le client finalise, vous vendez. S\u2019il abandonne, vous gardez la prime non remboursable et revendez le produit.',
-              },
-            ].map(({ icon: Icon, color, bg, title, desc }) => (
-              <div
-                key={title}
-                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all"
-              >
-                <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mb-4`}>
-                  <Icon className={`w-6 h-6 ${color}`} />
-                </div>
-                <h3 className="text-base font-[family-name:var(--font-sora)] font-semibold text-gray-900 mb-2">
-                  {title}
-                </h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== SECTEURS ===== */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
-        <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
-          Un seul outil, tous vos secteurs
-        </h2>
-        <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-          Moetly Pay s&apos;adapte à votre activité. Bloquez un prix, quel que soit le secteur.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Plane, emoji: '✈️', title: 'Transport', desc: 'Billets d\'avion, train, bus. Vos clients bloquent le tarif et épargnent pour leur voyage.', color: 'text-blue-primary', bg: 'bg-blue-light' },
-            { icon: Music, emoji: '🎫', title: 'Événements', desc: 'Concerts, spectacles, sport. Bloquez le prix d\'une place avant qu\'elle ne soit épuisée.', color: 'text-purple-600', bg: 'bg-purple-50' },
-            { icon: Building, emoji: '🏨', title: 'Hébergement', desc: 'Hôtels, locations, séjours. Sécurisez un tarif et laissez vos clients épargner.', color: 'text-amber-600', bg: 'bg-amber-50' },
-            { icon: Package, emoji: '📦', title: 'Sur mesure', desc: 'Formations, services, prestations. Adaptez le blocage de tarif à votre métier.', color: 'text-success', bg: 'bg-emerald-50' },
-          ].map(({ icon: Icon, emoji, title, desc, color, bg }) => (
-            <div key={title} className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all text-center">
-              <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                <Icon className={`w-6 h-6 ${color}`} />
-              </div>
-              <h3 className="text-base font-[family-name:var(--font-sora)] font-semibold text-gray-900 mb-1">
-                {emoji} {title}
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== DEUX MODÈLES D'INTÉGRATION ===== */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
-        <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
-          Deux façons de commencer
-        </h2>
-        <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-          Choisissez le modèle qui correspond à votre activité
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Liens de paiement */}
-          <div className="bg-white rounded-2xl border-2 border-blue-primary p-8 relative">
-            <span className="absolute -top-3 left-6 bg-blue-primary text-white text-xs font-semibold px-3 py-1 rounded-full">
-              Recommandé
-            </span>
-            <div className="w-14 h-14 bg-blue-light rounded-2xl flex items-center justify-center mb-5">
-              <Link2 className="w-7 h-7 text-blue-primary" />
-            </div>
-            <h3 className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-3">
-              Liens de paiement
-            </h3>
-            <p className="text-gray-500 text-sm mb-5">
-              La solution la plus simple. Aucune compétence technique requise.
-            </p>
-            <ul className="space-y-3 mb-6">
-              {[
-                'Créez un lien en 30 secondes',
-                'Partagez par WhatsApp, email, SMS',
-                'Suivi des vues et paiements',
-                'Aucune compétence technique',
-              ].map(item => (
-                <li key={item} className="flex items-start gap-2 text-sm text-gray-700">
-                  <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/marchand/login"
-              className="block text-center bg-yellow-accent text-gray-900 px-6 py-3 rounded-xl font-[family-name:var(--font-sora)] font-semibold hover:bg-yellow-dark transition-all"
-            >
-              Commencer maintenant
-            </Link>
-          </div>
-
-          {/* API Integration */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 relative">
-            <span className="absolute -top-3 left-6 bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1 rounded-full">
-              Technique
-            </span>
-            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-5">
-              <Code className="w-7 h-7 text-gray-700" />
-            </div>
-            <h3 className="text-xl font-[family-name:var(--font-sora)] font-bold text-gray-900 mb-3">
-              Intégration API
-            </h3>
-            <p className="text-gray-500 text-sm mb-5">
-              Pour les marchands qui veulent automatiser et intégrer à leur site.
-            </p>
-            <ul className="space-y-3 mb-6">
-              {[
-                'Widget embeddable en 2 lignes',
-                'Webhooks temps réel',
-                'Marchand ID unique',
-                'Documentation complète',
-              ].map(item => (
-                <li key={item} className="flex items-start gap-2 text-sm text-gray-700">
-                  <CheckCircle className="w-4 h-4 text-blue-primary mt-0.5 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/marchand/integration"
-              className="block text-center bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-[family-name:var(--font-sora)] font-semibold hover:bg-gray-200 transition-all"
-            >
-              Voir la documentation
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== TARIFS ===== */}
-      <section id="tarifs" className="bg-white py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl sm:text-3xl font-[family-name:var(--font-sora)] font-bold text-center text-gray-900 mb-4">
-            Tarification simple et transparente
-          </h2>
-          <p className="text-center text-gray-500 mb-12 max-w-xl mx-auto">
-            Pas de frais cachés, pas d&apos;abonnement. Vous touchez votre part de prime dès le blocage.
-          </p>
-
-          <div className="max-w-lg mx-auto bg-white rounded-2xl border-2 border-blue-primary shadow-lg overflow-hidden">
-            {/* Pricing header */}
-            <div className="bg-gradient-to-br from-blue-primary to-blue-dark p-8 text-center text-white">
-              <span className="inline-block bg-white/20 text-sm font-medium px-4 py-1 rounded-full mb-4">
-                Pour tous les marchands
-              </span>
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-5xl font-[family-name:var(--font-sora)] font-extrabold">5%</span>
-              </div>
-              <p className="mt-2 text-blue-100">de prime non remboursable sur chaque blocage de tarif</p>
-            </div>
-
-            {/* Pricing example */}
-            <div className="p-8">
-              <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Exemple concret
-              </h4>
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-500">Produit vendu</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(EXEMPLE_PRIX)}</span>
-                </div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-500">Prime client (5%)</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(prime)}</span>
-                </div>
-                <div className="border-t border-gray-200 my-3" />
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-500">Votre part (70%)</span>
-                  <span className="font-bold text-success">{formatCurrency(partMarchand)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Part Moetly (30%)</span>
-                  <span className="font-medium text-gray-400">{formatCurrency(partMoetly)}</span>
-                </div>
-              </div>
-
-              <div className="bg-blue-light/50 border border-blue-primary/10 rounded-lg p-3 mb-6">
-                <p className="text-xs text-blue-dark leading-relaxed">
-                  <strong>Modèle escrow :</strong> les versements du client sont sécurisés chez Moetly Pay.
-                  Vous recevez votre part de prime au blocage, puis le prix total à la finalisation.
-                </p>
-              </div>
-
-              {/* Inclusions */}
-              <ul className="space-y-3 mb-6">
-                {[
-                  'Aucun frais d\u2019inscription',
-                  'Aucun abonnement mensuel',
-                  'Dashboard inclus',
-                  'Support inclus',
-                  'API incluse',
-                ].map(item => (
-                  <li key={item} className="flex items-center gap-2 text-sm text-gray-700">
-                    <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/marchand/login"
-                className="block text-center bg-yellow-accent text-gray-900 px-6 py-4 rounded-xl font-[family-name:var(--font-sora)] font-bold text-lg hover:bg-yellow-dark transition-all"
-              >
-                Commencer gratuitement
-              </Link>
-              <p className="text-xs text-gray-400 text-center mt-3">
-                Aucune carte bancaire requise
+              <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-zinc-400">
+                <Sparkles className="h-3.5 w-3.5 text-yellow-accent" />
+                Fintech · Blocage de tarif
               </p>
+
+              <h1 className="font-[family-name:var(--font-sora)] text-[2.5rem] font-bold leading-[1.05] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-[4.5rem] xl:text-[5rem]">
+                Bloquez le prix.
+                <br />
+                <span className="text-zinc-400">Sécurisez la vente.</span>
+              </h1>
+
+              <p className="mx-auto mt-8 max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg">
+                Vos clients réservent avec une prime, épargnent à leur rythme, et vous gardez le contrôle — sans friction.
+              </p>
+
+              <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <Link
+                  href="/marchand/login"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-accent px-8 py-4 text-base font-semibold text-zinc-900 transition-colors hover:bg-[#e8c23a]"
+                >
+                  Commencer
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+                <a
+                  href="#comment-ca-marche"
+                  className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-transparent px-8 py-4 text-base font-semibold text-white transition-colors hover:border-white/25 hover:bg-white/[0.04]"
+                >
+                  Comment ça marche
+                </a>
+              </div>
+
+              <div className="mx-auto mt-16 flex max-w-2xl flex-col gap-4 sm:flex-row sm:justify-center sm:gap-8">
+                <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 sm:flex-1 sm:py-3">
+                  <CreditCard className="h-5 w-5 shrink-0 text-blue-primary" />
+                  <span className="text-left text-sm text-zinc-400">
+                    Paiements via <span className="font-medium text-zinc-200">Stripe</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 sm:flex-1 sm:py-3">
+                  <Lock className="h-5 w-5 shrink-0 text-yellow-accent" />
+                  <span className="text-left text-sm text-zinc-400">
+                    Fonds <span className="font-medium text-zinc-200">sécurisés</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 sm:flex-1 sm:py-3">
+                  <CheckCircle className="h-5 w-5 shrink-0 text-success" />
+                  <span className="text-left text-sm text-zinc-400">
+                    <span className="font-medium text-zinc-200">Sans engagement</span> caché
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Comment ça marche */}
+        <section id="comment-ca-marche" className="border-t border-white/[0.06] bg-[#0F0F0F] py-20 sm:py-28">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
+              <h2 className="font-[family-name:var(--font-sora)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Comment ça marche
+              </h2>
+              <p className="mt-4 text-zinc-400">
+                Trois étapes. Aucune complexité inutile.
+              </p>
+            </motion.div>
+
+            <div className="mt-16 grid gap-8 sm:grid-cols-3">
+              {[
+                {
+                  step: '01',
+                  icon: Link2,
+                  title: 'Créez un lien',
+                  desc: 'Définissez prix et durée. Votre lien est prêt à partager.',
+                },
+                {
+                  step: '02',
+                  icon: Zap,
+                  title: 'Le client bloque',
+                  desc: 'Il paie la prime et épargne le reste à son rythme.',
+                },
+                {
+                  step: '03',
+                  icon: Shield,
+                  title: 'Vous suivez tout',
+                  desc: 'Dashboard clair : versements, progression, finalisation.',
+                },
+              ].map((item) => (
+                <motion.div
+                  key={item.step}
+                  {...stagger}
+                  className="group relative rounded-2xl border border-white/[0.06] bg-[#0A0A0A] p-8 transition-colors hover:border-white/[0.1]"
+                >
+                  <span className="font-[family-name:var(--font-sora)] text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                    {item.step}
+                  </span>
+                  <div className="mt-6 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-blue-primary transition-colors group-hover:border-blue-primary/30">
+                    <item.icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-6 font-[family-name:var(--font-sora)] text-xl font-semibold text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">{item.desc}</p>
+                </motion.div>
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ===== CTA FINAL ===== */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-dark to-blue-primary" />
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center">
-          <h2 className="text-3xl sm:text-4xl font-[family-name:var(--font-sora)] font-extrabold text-white mb-4">
-            Prêt à convertir plus de clients ?
-          </h2>
-          <p className="text-lg text-blue-100 mb-8 max-w-xl mx-auto">
-            Rejoignez les marchands qui utilisent Moetly Pay pour ne plus perdre de ventes à cause du prix.
-          </p>
-          <Link
-            href="/marchand/login"
-            className="inline-flex items-center gap-2 bg-yellow-accent text-gray-900 px-8 py-4 rounded-xl text-lg font-[family-name:var(--font-sora)] font-bold hover:bg-yellow-dark transition-all shadow-lg"
+        {/* Avantages marchands */}
+        <section id="avantages" className="py-20 sm:py-28">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
+              <h2 className="font-[family-name:var(--font-sora)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Conçu pour les marchands
+              </h2>
+              <p className="mt-4 text-zinc-400">
+                Minimal. Précis. Efficace.
+              </p>
+            </motion.div>
+
+            <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  icon: TrendingUp,
+                  title: 'Conversion',
+                  desc: 'Réduisez les abandons liés au prix avec un blocage clair.',
+                },
+                {
+                  icon: CreditCard,
+                  title: 'Cash-flow',
+                  desc: 'Prime encaissée au blocage, suivi des versements en temps réel.',
+                },
+                {
+                  icon: Shield,
+                  title: 'Confiance',
+                  desc: 'Stripe pour les paiements, transparence pour vos clients.',
+                },
+                {
+                  icon: Sparkles,
+                  title: 'Simplicité',
+                  desc: 'Liens en quelques secondes — sans intégration lourde pour démarrer.',
+                },
+              ].map((card) => (
+                <motion.div
+                  key={card.title}
+                  {...stagger}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-white/[0.1]"
+                >
+                  <card.icon className="h-5 w-5 text-yellow-accent" />
+                  <h3 className="mt-5 font-[family-name:var(--font-sora)] text-lg font-semibold text-white">
+                    {card.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{card.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Chiffres clés */}
+        <section id="chiffres" className="border-t border-white/[0.06] bg-[#0F0F0F] py-20 sm:py-28">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
+              <h2 className="font-[family-name:var(--font-sora)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Les chiffres qui comptent
+              </h2>
+              <p className="mt-4 text-zinc-400">
+                Un modèle lisible, sans surprise.
+              </p>
+            </motion.div>
+
+            <div className="mt-16 grid gap-px overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: 'Prime standard', value: `${MOETLY_CONFIG.PRIME_RATE * 100}%`, hint: 'sur le prix bloqué' },
+                { label: 'Durées', value: '30 · 60 · 90j', hint: 'blocage flexible' },
+                { label: 'Part marchand (prime)', value: `${MOETLY_CONFIG.MARCHAND_SHARE * 100}%`, hint: 'de la prime' },
+                { label: 'Risque inventaire', value: 'Maîtrisé', hint: 'abandon = prime conservée' },
+              ].map((metric) => (
+                <motion.div
+                  key={metric.label}
+                  {...stagger}
+                  className="bg-[#0A0A0A] p-8 sm:p-10"
+                >
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">{metric.label}</p>
+                  <p className="mt-4 font-[family-name:var(--font-sora)] text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                    {metric.value}
+                  </p>
+                  <p className="mt-2 text-sm text-zinc-500">{metric.hint}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA final */}
+        <section className="relative overflow-hidden border-t border-white/[0.06] bg-[#050505] py-24 sm:py-32">
+          <div className="pointer-events-none absolute inset-0 bg-blue-primary/[0.03]" />
+          <motion.div
+            {...fadeUp}
+            className="relative mx-auto max-w-3xl px-4 text-center sm:px-6"
           >
-            Créer mon compte marchand
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <p className="text-sm text-blue-200 mt-4">
-            Gratuit pour commencer. Aucune carte requise.
-          </p>
-        </div>
-      </section>
+            <h2 className="font-[family-name:var(--font-sora)] text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Prêt à transformer vos offres ?
+            </h2>
+            <p className="mx-auto mt-6 max-w-lg text-lg text-zinc-400">
+              Rejoignez Mottali et proposez le blocage de tarif comme les meilleures fintechs — avec élégance.
+            </p>
+            <Link
+              href="/marchand/login"
+              className="mt-10 inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-accent px-10 py-4 text-base font-semibold text-zinc-900 transition-colors hover:bg-[#e8c23a]"
+            >
+              Ouvrir mon espace marchand
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </motion.div>
+        </section>
+      </main>
 
-      {/* ===== FOOTER ===== */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-start">
-            {/* Logo */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 bg-blue-primary rounded flex items-center justify-center">
-                  <Plane className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="font-[family-name:var(--font-sora)] font-bold text-white">
-                  Moetly<span className="text-yellow-accent">Pay</span>
-                </span>
-              </div>
-              <p className="text-sm">
-                Blocage de tarif et paiement flexible pour marchands
-              </p>
-            </div>
-
-            {/* Links */}
-            <div className="flex flex-col gap-2">
-              <a href="#comment-ca-marche" className="text-sm hover:text-white transition-colors">
-                Comment ca marche
-              </a>
-              <a href="#avantages" className="text-sm hover:text-white transition-colors">
-                Avantages
-              </a>
-              <a href="#tarifs" className="text-sm hover:text-white transition-colors">
-                Tarifs
-              </a>
-              <Link href="/marchand/login" className="text-sm hover:text-white transition-colors">
-                Espace marchand
-              </Link>
-              <Link href="/compte" className="text-sm hover:text-white transition-colors">
-                Espace client
-              </Link>
-              <Link href="/mentions-legales" className="text-sm hover:text-white transition-colors">
-                Mentions legales
-              </Link>
-              <Link href="/cgu" className="text-sm hover:text-white transition-colors">
-                CGU
-              </Link>
-              <Link href="/confidentialite" className="text-sm hover:text-white transition-colors">
-                Confidentialite
-              </Link>
-            </div>
-
-            {/* Info */}
-            <div className="text-right sm:text-right">
-              <p className="text-sm">&copy; {new Date().getFullYear()} Moetly Fintech</p>
-              <p className="text-sm">Tous droits réservés</p>
-              {process.env.NODE_ENV === 'development' && (
-                <p className="text-xs mt-2 text-gray-500">Mode test — Aucune transaction reelle</p>
-              )}
-            </div>
+      {/* Footer minimal */}
+      <footer className="border-t border-white/[0.06] bg-[#0A0A0A] py-12">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-8 px-4 sm:flex-row sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <span className="font-[family-name:var(--font-sora)] text-base font-bold text-white">Mottali</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-sm text-zinc-500">Blocage de tarif</span>
           </div>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500">
+            <a href="#comment-ca-marche" className="transition-colors hover:text-white">
+              Produit
+            </a>
+            <Link href="/marchand/login" className="transition-colors hover:text-white">
+              Marchands
+            </Link>
+            <Link href="/compte" className="transition-colors hover:text-white">
+              Clients
+            </Link>
+            <Link href="/mentions-legales" className="transition-colors hover:text-white">
+              Mentions légales
+            </Link>
+            <Link href="/cgu" className="transition-colors hover:text-white">
+              CGU
+            </Link>
+            <Link href="/confidentialite" className="transition-colors hover:text-white">
+              Confidentialité
+            </Link>
+          </div>
+          <p className="text-sm text-zinc-600">
+            © {new Date().getFullYear()} Mottali
+          </p>
         </div>
       </footer>
     </div>
